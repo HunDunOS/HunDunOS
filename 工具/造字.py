@@ -18,13 +18,36 @@ import os
 import re
 import gzip
 
-UNIFONT = "/tmp/unifont.hex.gz"
+# 字库文件的查找顺序（第一个存在的就用）：
+#   1. 仓库自带的   资源/unifont.hex.gz
+#   2. 环境变量     UNIFONT=/路径/xxx.hex.gz
+#   3. 系统临时目录 /tmp/unifont.hex.gz
+_HERE = os.path.dirname(os.path.abspath(__file__))
+UNIFONT_CANDIDATES = [
+    os.path.join(_HERE, "..", "资源", "unifont.hex.gz"),
+    os.environ.get("UNIFONT", ""),
+    "/tmp/unifont.hex.gz",
+]
 
 
-def load_unifont(path=UNIFONT):
+def find_unifont():
+    for p in UNIFONT_CANDIDATES:
+        if p and os.path.exists(p):
+            return p
+    raise SystemExit(
+        "找不到字库文件。请把 unifont.hex.gz 放到以下任意位置：\n  " +
+        "\n  ".join(x for x in UNIFONT_CANDIDATES if x) +
+        "\n或者设置环境变量 UNIFONT=/路径/unifont.hex.gz\n"
+        "下载：https://unifoundry.com/unifont/"
+    )
+
+
+UNIFONT = None
+
+
+def load_unifont(path=None):
+    path = path or find_unifont()
     table = {}
-    if not os.path.exists(path):
-        raise SystemExit("找不到字库文件 %s" % path)
     with gzip.open(path, "rt", encoding="utf-8", errors="replace") as f:
         for line in f:
             line = line.strip()

@@ -43,32 +43,27 @@ echo "[3/7] 编译新语模块"
 : > "$B/空.xy"
 "$B/xyc" -r "$B/空.xy"                     -o "$B/运行时.s"
 "$B/xyc" -c "$B/生成/内核对象.xy"            -o "$B/内核对象.s"
-
-if [ "$MODE" = "终端" ]; then
-    "$B/xyc" -c "$ROOT/模块/盘.xy"          -o "$B/盘.s"
-    "$B/xyc" -c "$ROOT/模块/盘格式.xy"      -o "$B/盘格式.s"
-    "$B/xyc" -c "$ROOT/模块/压缩.xy"        -o "$B/压缩.s"
-    "$B/xyc" -c "$ROOT/模块/机器.xy"        -o "$B/机器.s"
-    "$B/xyc" -c "$ROOT/模块/壳.xy"          -o "$B/壳.s"
-    "$B/xyc" -m "$ROOT/模块/主终端.xy"      -o "$B/主.s"
-    MODS="运行时 内核对象 盘 盘格式 压缩 机器 壳 主"
-else
-    "$B/xyc" -c "$B/生成/界面.xy"           -o "$B/界面.s"
-    "$B/xyc" -c "$B/生成/应用.xy"           -o "$B/应用.s"
-    "$B/xyc" -c "$ROOT/模块/盘.xy"          -o "$B/盘.s"
-    "$B/xyc" -c "$ROOT/模块/盘格式.xy"      -o "$B/盘格式.s"
-    "$B/xyc" -c "$ROOT/模块/压缩.xy"        -o "$B/压缩.s"
-    "$B/xyc" -m "$B/生成/主.xy"             -o "$B/主.s"
-    MODS="运行时 内核对象 界面 应用 盘 盘格式 压缩 主"
-fi
+"$B/xyc" -c "$B/生成/界面.xy"               -o "$B/界面.s"
+"$B/xyc" -c "$B/生成/应用.xy"               -o "$B/应用.s"
+"$B/xyc" -c "$ROOT/模块/盘.xy"              -o "$B/盘.s"
+"$B/xyc" -c "$ROOT/模块/盘格式.xy"          -o "$B/盘格式.s"
+"$B/xyc" -c "$ROOT/模块/压缩.xy"            -o "$B/压缩.s"
+"$B/xyc" -c "$ROOT/模块/机器.xy"            -o "$B/机器.s"
+"$B/xyc" -c "$ROOT/模块/网卡.xy"            -o "$B/网卡.s"
+"$B/xyc" -c "$ROOT/模块/视图.xy"            -o "$B/视图.s"
+"$B/xyc" -c "$ROOT/模块/包.xy"              -o "$B/包.s"
+"$B/xyc" -c "$ROOT/模块/壳.xy"              -o "$B/壳.s"
+"$B/xyc" -m "$B/生成/主.xy"                 -o "$B/主.s"
+MODS="运行时 内核对象 界面 应用 盘 盘格式 压缩 机器 网卡 包 视图 壳 主"
 
 for m in $MODS; do
     "$AS" --32 "$B/$m.s" -o "$B/$m.o"
 done
 
-echo "[4/7] 汇编运行时（图形 / 原语）"
+echo "[4/7] 汇编运行时（图形 / 原语 / C 接口）"
 "$AS" --32 "$ROOT/运行时/图形.asm" -o "$B/图形.o"
 "$AS" --32 "$ROOT/运行时/原语.asm" -o "$B/原语.o"
+"$AS" --32 "$ROOT/运行时/C接口.asm" -o "$B/C接口.o"
 
 echo "[5/7] 生成字库"
 python3 "$ROOT/工具/造字.py" "$B/字体.s" "$ROOT/模块"/*.xy "$B/生成"/*.xy > /dev/null
@@ -78,7 +73,7 @@ echo "[6/7] 链接内核"
 OBJS=""
 for m in $MODS; do OBJS="$OBJS $B/$m.o"; done
 $LD -m elf_i386 -T "$ROOT/链接/link_xboot.ld" -o "$B/kernel.elf" \
-    $OBJS "$B/图形.o" "$B/原语.o" "$B/字体.o" 2>/dev/null
+    $OBJS "$B/图形.o" "$B/原语.o" "$B/C接口.o" "$B/字体.o" 2>/dev/null
 
 "$AS" --32 "$ROOT/引导器/boot1.asm" -o "$B/boot1.o"
 # 终端版和桌面版都用 VBE（终端是画在帧缓冲上的）

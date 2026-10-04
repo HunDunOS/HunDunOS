@@ -317,11 +317,11 @@ _gfx_frame:
     mov ecx, [esp + 44]
     mov edx, [esp + 40]
     mov eax, [esp + 36]
-    push eax                        # 上边
-    push 1
+    push edi                        # 上边 —— _gfx_fill 读的是「最后压的=色」，
+    push esi                        #        所以必须正序压：x, y, 宽, 高, 色
     push ecx
-    push esi
-    push edi
+    push 1
+    push eax
     call _gfx_fill
     add esp, 20
     mov edi, [esp + 52]
@@ -331,11 +331,11 @@ _gfx_frame:
     mov eax, [esp + 36]
     dec edx
     add esi, edx
-    push eax                        # 下边
-    push 1
-    push ecx
+    push edi                        # 下边
     push esi
-    push edi
+    push ecx
+    push 1
+    push eax
     call _gfx_fill
     add esp, 20
     mov edi, [esp + 52]
@@ -343,11 +343,11 @@ _gfx_frame:
     mov ecx, [esp + 44]
     mov edx, [esp + 40]
     mov eax, [esp + 36]
-    push eax                        # 左边
-    push edx
-    push 1
+    push edi                        # 左边
     push esi
-    push edi
+    push 1
+    push edx
+    push eax
     call _gfx_fill
     add esp, 20
     mov edi, [esp + 52]
@@ -357,11 +357,11 @@ _gfx_frame:
     mov eax, [esp + 36]
     dec ecx
     add edi, ecx
-    push eax                        # 右边
-    push edx
-    push 1
+    push edi                        # 右边
     push esi
-    push edi
+    push 1
+    push edx
+    push eax
     call _gfx_fill
     add esp, 20
     popad
@@ -980,6 +980,88 @@ _gfx_hex:                           # 绘十六( x, y, 值, 色 ) —— 画 8 �
     add esp, 16
     popad
     ret
+
+# ===========================================================================
+#  滚块( x, y, 宽, 高, 像素, 背景色 )
+#  只滚一个矩形区域，不动别的地方 —— 终端搬进窗口要用
+#  约定：调用方保证矩形在屏幕内（终端窗口的内容区总是能保证）
+# ===========================================================================
+    .globl _gfx_scrollrect
+_gfx_scrollrect:
+    pushad
+    mov ebx, [_gfx_fb]
+    test ebx, ebx
+    jz .sr_end
+
+    mov edi, [esp + 56]             # x
+    mov esi, [esp + 52]             # y
+    mov ecx, [esp + 48]             # 宽
+    mov edx, [esp + 44]             # 高
+    mov ebp, [esp + 40]             # 像素
+    mov eax, [esp + 36]             # 背景色
+    test ecx, ecx
+    jle .sr_end
+    test edx, edx
+    jle .sr_end
+    test ebp, ebp
+    jle .sr_end
+    cmp ebp, edx
+    jb .sr_n_ok
+    xor ebp, ebp                    # 滚的比高还多 → 等于全清
+.sr_n_ok:
+    # 源行起点 = fb + (y+n)*pitch + x*4
+    mov eax, esi
+    add eax, ebp
+    imul eax, [_gfx_pitch]
+    add eax, ebx
+    lea eax, [eax + edi*4]
+    mov [.sr_src], eax
+    # 目的行起点 = fb + y*pitch + x*4
+    mov eax, esi
+    imul eax, [_gfx_pitch]
+    add eax, ebx
+    lea eax, [eax + edi*4]
+    mov [.sr_dst], eax
+    # 搬 h-n 行
+    mov eax, edx
+    sub eax, ebp
+    mov [.sr_rows], eax
+.sr_row:
+    cmp dword ptr [.sr_rows], 0
+    jle .sr_fill
+    mov esi, [.sr_src]
+    mov edi, [.sr_dst]
+    mov ecx, [esp + 48]
+    cld
+    rep movsd
+    mov eax, [_gfx_pitch]
+    add [.sr_src], eax
+    add [.sr_dst], eax
+    dec dword ptr [.sr_rows]
+    jmp .sr_row
+.sr_fill:
+    mov ebp, [esp + 40]
+.sr_frow:
+    test ebp, ebp
+    jle .sr_end
+    mov edi, [.sr_dst]
+    mov ecx, [esp + 48]
+    mov eax, [esp + 36]
+    cld
+    rep stosd
+    mov eax, [_gfx_pitch]
+    add [.sr_dst], eax
+    dec ebp
+    jmp .sr_frow
+.sr_end:
+    popad
+    ret
+
+    .section .data
+.sr_src:  .long 0
+.sr_dst:  .long 0
+.sr_rows: .long 0
+    .section .text
 
 # ===========================================================================
 #  滚屏( 像素 ) —— 整屏向上挪 n 像素，底部 n 像素填背景色

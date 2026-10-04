@@ -14,7 +14,11 @@ xyc
 *.s
 输出.s
 
+# 字体源（936KB，太大；需要时自己下 unifont）
+资源/unifont.hex.gz
+
 # 编辑器 / 系统
 .DS_Store
 *.swp
 *~
+__pycache__/

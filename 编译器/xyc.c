@@ -339,6 +339,7 @@ static const struct { const char *name; const char *sym; int nargs; } GFX_BUILTI
     {"绘十六", "_gfx_hex",       4},
     {"绘块混", "_gfx_fillblend", 6},
     {"滚屏",   "_gfx_scrollup",   2},
+    {"滚块",   "_gfx_scrollrect", 6},
     /* ---- 机器原语（原语.asm）---- */
     {"端入",   "_pr_in8",        1},
     {"端入字", "_pr_in16",       1},
@@ -349,6 +350,7 @@ static const struct { const char *name; const char *sym; int nargs; } GFX_BUILTI
     {"读8",    "_pr_ld8",        1},
     {"写8",    "_pr_st8",        2},
     {"停机",   "_pr_halt",       0},
+    {"调用",   "_pr_call",       5},
     {"读CPUID","_pr_cpuid",      2},
     {"CPUE",   "_pr_ca",         0},
     {"CPUB",   "_pr_cb",         0},
