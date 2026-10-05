@@ -32,6 +32,8 @@ mon("mouse_move 176 490"); time.sleep(2)
 mon("mouse_button 1"); time.sleep(0.5); mon("mouse_button 0"); time.sleep(4)
 shot("2史书开了")
 for cmd in CMDS:
+    不回车 = cmd.startswith("!")
+    if 不回车: cmd = cmd[1:]
     ci = 0
     while ci < len(cmd):
         if cmd[ci:ci+4] == "<bs>":
@@ -39,9 +41,13 @@ for cmd in CMDS:
         if cmd[ci:ci+5] == "<bsp>":   # 只退格不回车时用
             mon("sendkey backspace"); time.sleep(0.25); ci += 5; continue
         ch = cmd[ci]
+        if cmd[ci:ci+6] == "<left>":
+            mon("sendkey left"); time.sleep(0.25); ci += 6; continue
+        if cmd[ci:ci+7] == "<right>":
+            mon("sendkey right"); time.sleep(0.25); ci += 7; continue
         mon("sendkey " + ({" ": "spc", ".": "dot"}.get(ch, ch))); time.sleep(0.18)
         ci += 1
-    if not cmd.startswith("<"): 
+    if not 不回车:
         mon("sendkey ret"); time.sleep(7)
 shot("5跑完")
 mon("quit"); time.sleep(0.5)

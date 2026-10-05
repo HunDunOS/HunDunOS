@@ -796,8 +796,23 @@ _kbd_decode:                        # al = 扫描码
     jmp .kd_put
 .kd_a3:
     cmp eax, 0x4D
-    jne .kd_end
+    jne .kd_a4
     mov eax, 0x14
+    jmp .kd_put
+.kd_a4:
+    cmp eax, 0x53                 # Delete
+    jne .kd_a5
+    mov eax, 0x7F                 # 127 = 删除光标处那个字
+    jmp .kd_put
+.kd_a5:
+    cmp eax, 0x47                 # Home
+    jne .kd_a6
+    mov eax, 0x15
+    jmp .kd_put
+.kd_a6:
+    cmp eax, 0x4F                 # End
+    jne .kd_end
+    mov eax, 0x06                 # 跟壳里 读行 已有的约定一致
     jmp .kd_put
 .kd_end:
     popad
@@ -1073,15 +1088,17 @@ _gfx_scrollup:
     mov ebx, [_gfx_fb]
     test ebx, ebx
     jz .su_end
-    mov ecx, [esp + 36]             # n
+    # ★ 参数顺序：新语【第一个参数压得最深】，所以
+    #   [esp+40] = n（像素，先压）   [esp+36] = 背景色（后压）
+    #   以前这两个读反了 → n 变成了颜色值（16 万）→ 两个分支都成了空操作
+    mov ecx, [esp + 40]             # n
     test ecx, ecx
     jle .su_end
     mov edx, [_gfx_h]
     cmp ecx, edx
     jb .su_ok
-    xor ecx, ecx                    # n >= 高 → 就当整屏清掉
-    mov [esp + 36], ecx
-    mov ecx, edx
+    mov ecx, edx                    # n >= 高 → 整屏清：把 n 改成 高
+    mov [esp + 40], ecx             # ★ 参数区也要改，不然底部填色用的是旧值
 .su_ok:
     mov eax, [_gfx_pitch]
     imul eax, ecx                   # n * pitch
@@ -1096,7 +1113,7 @@ _gfx_scrollup:
     cld
     rep movsd
     # 底部 n 行填背景
-    mov ecx, [esp + 36]
+    mov ecx, [esp + 40]             # n（第 1 个参数）
     mov eax, [_gfx_pitch]
     imul eax, ecx
     mov edi, [_gfx_fb]
@@ -1106,7 +1123,7 @@ _gfx_scrollup:
     add edi, edx
     shr eax, 2
     mov ecx, eax
-    mov eax, [esp + 40]             # 背景色（第 2 个参数）
+    mov eax, [esp + 36]             # 背景色（第 2 个参数）
     cld
     rep stosd
 .su_end:
