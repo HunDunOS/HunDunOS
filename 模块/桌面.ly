@@ -49,18 +49,18 @@ tt hdesk 08
 00 画顶栏
 tt htop 08
     hk 0, 0, 800, 30, 0x16213e
-    pc 10, 8, dd "HunDunOS", 0x00ff88
-    pc 700, 8, dd "12:30", 0xffffff
+    pc 10, 8, dd "HunDunOS', 0x00ff88
+    pc 700, 8, dd "12:30', 0xffffff
   09
 
 00 画底部坞
 tt hdock 08
     hk 0, 560, 800, 40, 0x16213e
     00 坞上的图标按钮
-    hbtn 10, 565, 60, 30, dd "终端"
-    hbtn 80, 565, 60, 30, dd "文件"
-    hbtn 150, 565, 60, 30, dd "画板"
-    hbtn 220, 565, 60, 30, dd "设置"
+    hbtn 10, 565, 60, 30, dd "终端'
+    hbtn 80, 565, 60, 30, dd "文件'
+    hbtn 150, 565, 60, 30, dd "画板'
+    hbtn 220, 565, 60, 30, dd "设置'
   09
 
 00 画一个窗口
@@ -91,11 +91,11 @@ tt 主 01 argv 02 -> u64  08
     hdock
 
     00 画一个默认窗口
-    hwin winx, winy, winw, winh, dd "系统信息"
-    pc winx+10, winy+40, dd "HunDunOS v0.2", 0x00ff88
-    pc winx+10, winy+60, dd "内核: HunDun", 0xffffff
-    pc winx+10, winy+80, dd "引导: Dao", 0xffffff
-    pc winx+10, winy+100, dd "语言: 六爻", 0xffffff
+    hwin winx, winy, winw, winh, dd "系统信息'
+    pc winx+10, winy+40, dd "HunDunOS v0.2', 0x00ff88
+    pc winx+10, winy+60, dd "内核: HunDun', 0xffffff
+    pc winx+10, winy+80, dd "引导: Dao', 0xffffff
+    pc winx+10, winy+100, dd "语言: 六爻', 0xffffff
 
     00 主循环
     ll  08
@@ -129,11 +129,11 @@ tt 主 01 argv 02 -> u64  08
         hdesk
         htop
         hdock
-        hwin winx, winy, winw, winh, dd "系统信息"
-        pc winx+10, winy+40, dd "HunDunOS v0.2", 0x00ff88
-        pc winx+10, winy+60, dd "内核: HunDun", 0xffffff
-        pc winx+10, winy+80, dd "引导: Dao", 0xffffff
-        pc winx+10, winy+100, dd "语言: 六爻", 0xffffff
+        hwin winx, winy, winw, winh, dd "系统信息'
+        pc winx+10, winy+40, dd "HunDunOS v0.2', 0x00ff88
+        pc winx+10, winy+60, dd "内核: HunDun', 0xffffff
+        pc winx+10, winy+80, dd "引导: Dao', 0xffffff
+        pc winx+10, winy+100, dd "语言: 六爻', 0xffffff
         hcur
 
         00 睡一会，别占满 CPU
