@@ -1,0 +1,11 @@
+
+[xboot2] HunDun self-hosted bootloader
+[xboot2] loading kernel...
+[xboot2] kernel loaded
+[xboot2] graphics mode set
+[盘] 主通道没有 ATA 盘
+[HDGX] 没有盘
+[压] 原文 110 字节
+[压] 压缩后 26 字节
+[压] 解出 110 字节
+[压] 逐字节一致 ✓
