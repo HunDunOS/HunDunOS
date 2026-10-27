@@ -317,6 +317,66 @@ pm_entry:
     mov ss, ax
     mov esp, 0x70000
 
+    # ============================================================
+    #  切换到 64 位长模式！
+    # ============================================================
+    # 1. 检查 CPU 支持长模式
+    mov eax, 0x80000000
+    cpuid
+    cmp eax, 0x80000001
+    jb .no_long_mode
+
+    mov eax, 0x80000001
+    cpuid
+    test edx, 1 << 29          # LM 位
+    jz .no_long_mode
+
+    # 2. 页表清零（从 PML4T 到 PT，共 4 页）
+    mov edi, PML4T
+    xor eax, eax
+    mov ecx, 4 * 1024
+    rep stosd
+
+    # 3. 填页表：把 0-1GB  identity map
+    # PML4T[0] -> PDPT
+    mov dword ptr [PML4T], PDPT | 0x03
+    mov dword ptr [PML4T + 4], 0
+
+    # PDPT[0] -> PDT
+    mov dword ptr [PDPT], PDT | 0x03
+    mov dword ptr [PDPT + 4], 0
+
+    # PDT[0] -> 2MB 大页，直接映射 0-2MB
+    mov dword ptr [PDT], 0x0 | 0x83   # 2MB 大页，可写，存在
+    mov dword ptr [PDT + 4], 0
+
+    # 4. 打开 PAE
+    mov eax, cr4
+    or eax, 1 << 5
+    mov cr4, eax
+
+    # 5. 把 PML4T 写进 cr3
+    mov eax, PML4T
+    mov cr3, eax
+
+    # 6. 打开 EFER.LME
+    mov ecx, 0xC0000080        # EFER 寄存器
+    rdmsr
+    or eax, 1 << 8             # LME 位
+    wrmsr
+
+    # 7. 打开分页
+    mov eax, cr0
+    or eax, 1 << 31            # PG 位
+    or eax, 1 << 0             # PE 位（已经开了，保险）
+    mov cr0, eax
+
+    # 8. 跳到 64 位代码段！
+    ljmp 0x18:long_mode_entry
+
+.no_long_mode:
+    # 不支持长模式就继续跑 32 位
+
     # ---- 清 BSS ----
     mov edi, [bss_start]
     mov ecx, [bss_end]
@@ -436,13 +496,21 @@ print_hex:
 # ===========================================================================
     .align 8
 gdt_start:
-    .quad 0x0000000000000000
-    .quad 0x00CF9A000000FFFF
-    .quad 0x00CF92000000FFFF
+    .quad 0x0000000000000000          # 空描述符
+    .quad 0x00CF9A000000FFFF          # 32位代码段
+    .quad 0x00CF92000000FFFF          # 32位数据段
+    .quad 0x00AF9A000000FFFF          # 64位代码段！
+    .quad 0x00CF92000000FFFF          # 64位数据段
 gdt_end:
 gdt_desc:
     .word gdt_end - gdt_start - 1
     .long gdt_start
+
+# ---- 64位页表（放在 0x100000 处，1MB 位置）----
+.set PML4T, 0x100000
+.set PDPT,  0x101000
+.set PDT,   0x102000
+.set PT,    0x103000
 
     .align 4
 # ---- 打包器补丁表：xiso.py 按魔数查找并回填（32 位小端）----
