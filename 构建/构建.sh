@@ -35,7 +35,7 @@ echo "[1/7] 编译 lyc"
 gcc -O2 -w -o "$B/lyc" "$ROOT/编译器/lyc.c"
 
 echo "[2/7] 编译六爻模块"
-MODS="盘 盘格式 压缩 机器 网卡 视图 包 壳 桌面 渲染器"
+MODS="p pgs ys jq wk st b k zm xq"
 for m in $MODS; do
     echo "  → $m.ly"
     "$B/lyc" "$ROOT/模块/$m.ly" -o "$B/$m.s"
