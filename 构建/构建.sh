@@ -25,9 +25,8 @@ esac
 AS="as"
 LD="ld"
 OBJCOPY="objcopy"
-command -v i586-alpine-linux-musl-as >/dev/null 2>&1 && AS="i586-alpine-linux-musl-as"
-command -v i586-alpine-linux-musl-ld >/dev/null 2>&1 && LD="i586-alpine-linux-musl-ld"
-command -v i586-alpine-linux-musl-objcopy >/dev/null 2>&1 && OBJCOPY="i586-alpine-linux-musl-objcopy"
+ARCH="elf_x86_64"
+BITS="64"
 
 B="$ROOT/构建/中间"
 mkdir -p "$B"
