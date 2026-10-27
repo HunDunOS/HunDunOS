@@ -13,7 +13,7 @@
 #    2. 把 BIOS 给的引导盘号存进 XBP 引导信息块（0x0500）
 #    3. 跳到第二阶段（0x7E00，紧跟本扇区，El Torito 一次载入）
 #
-#  汇编：as --32 boot1.asm -o boot1.o（与 boot2.o 一起用 xboot.ld 链接）
+#  汇编：as --32 boot1.asm -o boot1.o（与 boot2.o 一起用 Dao.ld 链接）
 # ============================================================================
 
     .code16
@@ -56,7 +56,7 @@ print:
     popa
     ret
 
-msg_hello:   .asciz "[xboot1] "
+msg_hello:   .asciz "[Dao1] "
 
     .space 510 - (. - _start)
     .word 0xAA55

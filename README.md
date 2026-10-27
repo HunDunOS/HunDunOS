@@ -69,7 +69,7 @@ HD> qu 4f9f2cab
 ```
 HD> xin
                             系统    混沌 HunDun OS
-        ░░░░░               内核    自研引导器 xboot + HunDun 内核
+        ░░░░░               内核    自研引导器 Dao + HunDun 内核
       ░▒▒▒▒▒▒▒░             语言    六爻（关键字全拼音，危险操作要 wx{}）
      ░▒▓▓▓▓▓▓▓▒░            固件    SeaBIOS
     ░▒▓███████▓▒░           处理器  GenuineIntel · 1 核
@@ -234,7 +234,7 @@ as --32 运行时.s -o 运行时.o
 as --32 甲.s    -o 甲.o
 as --32 乙.s    -o 乙.o
 as --32 主.s    -o 主.o
-ld -m elf_i386 -T 链接/link_xboot.ld -o kernel.elf 运行时.o 甲.o 乙.o 主.o
+ld -m elf_i386 -T 链接/link_Dao.ld -o kernel.elf 运行时.o 甲.o 乙.o 主.o
 ```
 
 （`构建/构建.sh` 把这些串好了，实际不用手敲。）
@@ -399,9 +399,9 @@ lyc: 六爻 stage0 v0.4 -> 输出.s（2 字符串 / 0 全局 / 1 函数）
   机器.ly 壳.ly 主终端.ly     硬件探测 / 命令行壳 / 终端入口
   由拆分.py生成/              构建时从 桌面.ly 切出来的四块
 引导器/boot1.asm boot2.asm   自研引导器
-引导器/xboot.ld              引导器链接脚本（地址就是段内偏移）
+引导器/Dao.ld              引导器链接脚本（地址就是段内偏移）
 运行时/图形.asm 原语.asm      帧缓冲运行时 / 机器原语
-链接/link_xboot.ld           内核链接脚本（加载到 0x10000）
+链接/link_Dao.ld           内核链接脚本（加载到 0x10000）
 工具/xiso.py                自研 ISO 9660 + El Torito 打包器
 工具/xelf.py                极简 ELF32 读取器（自己摊平，不用 objcopy）
 工具/造字.py                 从 Unifont 生成点阵字库

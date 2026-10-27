@@ -1,5 +1,5 @@
 # ============================================================================
-#  混沌 自研引导器 —— 第二阶段（xboot stage2）
+#  混沌 自研引导器 —— 第二阶段（Dao stage2）
 #  路线图阶段 4（自研引导器）+ 阶段 5（自研引导协议 XBP），合并完成
 #
 #  由第一阶段（0x7C00）跳到 0x7E00 运行。实模式，DS=ES=SS=CS=0x07C0。
@@ -514,9 +514,9 @@ gdt_desc:
 
     .align 4
 # ---- 打包器补丁表：xiso.py 按魔数查找并回填（32 位小端）----
-    .globl xboot_patch
-xboot_patch:
-xboot_magic:
+    .globl Dao_patch
+Dao_patch:
+Dao_magic:
     .ascii "XBOO"
 krn_lba:   .long 0                          # +4  内核 LBA（2048 字节扇区）
 krn_secs:  .long 0                          # +8  内核扇区数（2048 字节单位）
@@ -556,11 +556,11 @@ dap_lba:   .quad 0
 vbe_info_buf: .space 512
 vbe_mode_buf: .space 256
 
-m_banner:  .asciz "\n[xboot2] HunDun self-hosted bootloader\n"
-m_load:    .asciz "[xboot2] loading kernel...\n"
-m_loaded:  .asciz "[xboot2] kernel loaded\n"
-m_cand:    .asciz "[xboot2] mode candidate 0x"
+m_banner:  .asciz "\n[Dao2] HunDun self-hosted bootloader\n"
+m_load:    .asciz "[Dao2] loading kernel...\n"
+m_loaded:  .asciz "[Dao2] kernel loaded\n"
+m_cand:    .asciz "[Dao2] mode candidate 0x"
 m_nl:      .asciz "\n"
-m_mode_ok: .asciz "[xboot2] graphics mode set\n"
-m_no_vbe:  .asciz "[xboot2] no VBE, text mode\n"
-m_fail:    .asciz "[xboot2] FAILED\n"
+m_mode_ok: .asciz "[Dao2] graphics mode set\n"
+m_no_vbe:  .asciz "[Dao2] no VBE, text mode\n"
+m_fail:    .asciz "[Dao2] FAILED\n"
