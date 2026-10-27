@@ -69,7 +69,7 @@ HD> qu 4f9f2cab
 ```
 HD> xin
                             系统    混沌 HunDun OS
-        ░░░░░               内核    自研引导器 xboot + 六爻内核
+        ░░░░░               内核    自研引导器 xboot + HunDun 内核
       ░▒▒▒▒▒▒▒░             语言    六爻（关键字全拼音，危险操作要 wx{}）
      ░▒▓▓▓▓▓▓▓▒░            固件    SeaBIOS
     ░▒▓███████▓▒░           处理器  GenuineIntel · 1 核
