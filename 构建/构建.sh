@@ -64,6 +64,7 @@ $LD -m elf_x86_64 -T "$ROOT/链接/link_xboot.ld" -o "$B/kernel.elf" \
 "$AS" --16 "$ROOT/引导器/Dao1.asm" -o "$B/Dao1.o"
 "$AS" --32 --defsym WITH_VBE=1 "$ROOT/引导器/Dao2.asm" -o "$B/Dao2.o"
 $LD -m elf_i386 -T "$ROOT/引导器/xboot.ld" -o "$B/Dao.elf" "$B/Dao1.o" "$B/Dao2.o"
+# 引导器是 16/32 位过渡，内核是 64 位！
 $OBJCOPY -O binary "$B/Dao.elf" "$B/Dao.bin"
 
 echo "[7/7] 打 ISO"
