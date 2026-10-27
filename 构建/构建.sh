@@ -61,13 +61,14 @@ for m in $MODS; do OBJS="$OBJS $B/$m.o"; done
 $LD -m elf_i386 -T "$ROOT/链接/link_xboot.ld" -o "$B/kernel.elf" \
     $OBJS "$B/图形.o" "$B/原语.o" "$B/C接口.o" "$B/字体.o" 2>/dev/null
 
-"$AS" --32 "$ROOT/引导器/boot1.asm" -o "$B/boot1.o"
-"$AS" --32 --defsym WITH_VBE=1 "$ROOT/引导器/boot2.asm" -o "$B/boot2.o"
-$LD -m elf_i386 -T "$ROOT/引导器/xboot.ld" -o "$B/xboot.elf" "$B/boot1.o" "$B/boot2.o"
+"$AS" --32 "$ROOT/引导器/Dao1.asm" -o "$B/Dao1.o"
+"$AS" --32 --defsym WITH_VBE=1 "$ROOT/引导器/Dao2.asm" -o "$B/Dao2.o"
+$LD -m elf_i386 -T "$ROOT/引导器/xboot.ld" -o "$B/Dao.elf" "$B/Dao1.o" "$B/Dao2.o"
+$OBJCOPY -O binary "$B/Dao.elf" "$B/Dao.bin"
 $OBJCOPY -O binary "$B/xboot.elf" "$B/xboot.bin"
 
 echo "[7/7] 打 ISO"
-python3 "$ROOT/工具/xiso.py" "$OUT" "$B/xboot.bin" "内核=$B/kernel.elf" | tail -4
+python3 "$ROOT/工具/xiso.py" "$OUT" "$B/Dao.bin" "内核=$B/kernel.elf" | tail -4
 echo
 echo "完成：$OUT  ($(stat -c%s "$OUT") 字节)"
 echo "跑：qemu-system-i386 -cdrom $OUT -boot d -m 256 -vga std"
