@@ -1,7 +1,7 @@
 00 ============================================================
-00 混沌 HTML 渲染器（渲染器.ly）
-00 用六爻语言写，在内核里跑
-00 解析 HTML 字符串，dy底层画图函数
+00 hd HTML render（render.ly）
+00 用六爻语言write，在kernel里跑
+00 解析 HTML str，dy底层画图func
 00 ============================================================
 
 00 ---- 状态 ----
@@ -20,9 +20,9 @@ ts html_tag_len = 0
 ts html_text_buf[256] = 0
 ts html_text_len = 0
 
-00 ---- 函数 ----
+00 ---- func ----
 
-tt html_初始化 01 串 02 -> u64 08
+tt html_init 01 串 02 -> u64 08
     tz i = 0
     tz len = cl 01 02
     html_len = len
@@ -38,7 +38,7 @@ tt html_初始化 01 串 02 -> u64 08
     html_text_len = 0
     09
 
-tt html_画背景 08
+tt html_画bg 08
     画矩形 0 0 html_w html_h html_bg
     09
 
@@ -46,7 +46,7 @@ tt html_画文字 01 x 01 y 01 串 02 08
     pc x y 串 html_color
     09
 
-tt html_画按钮 01 x 01 y 01 w 01 h 01 文 02 08
+tt html_画btn 01 x 01 y 01 w 01 h 01 文 02 08
     画矩形 x y w h 0xCCCCCC
     画矩形 x y w 2 0xFFFFFF
     画矩形 x y+h-2 w 2 0x888888
@@ -81,7 +81,7 @@ tt html_解析标签 08
         00 <button>
         lz t0 0x62 08 ls  09 00 b
             lz t1 0x75 08 ls  09 00 u
-                00 <button> 开始收集文字
+                00 <button> start收集文字
                 html_text_len = 0
              09
          09
@@ -92,9 +92,9 @@ tt html_解析标签 08
             lz t1b 0x62 08 ls  09 00 b
                 tz t2 = html_tag_name[2]
                 lz t2 0x75 08 ls  09 00 u
-                    00 </button> 画按钮
+                    00 </button> 画btn
                     html_text_buf[html_text_len] = 0
-                    html_画按钮 html_x html_y 120 40 html_text_buf
+                    html_画btn html_x html_y 120 40 html_text_buf
                     html_y = html_y + 50
                  09
              09
@@ -103,8 +103,8 @@ tt html_解析标签 08
     09
 
 tt html_渲染 01 串 02 08
-    html_初始化 01 02
-    html_画背景
+    html_init 01 02
+    html_画bg
 
     ll  08
         lz html_pos html_len 08 ls  09
@@ -128,7 +128,7 @@ tt html_渲染 01 串 02 08
 00 ============================================================
 00 用法：
 00 html_渲染 03 <html><body>
-00  <button>你好混沌</button>
-00  <button>系统信息</button>
+00  <button>你好hd</button>
+00  <button>sys信息</button>
 00 </body></html>04
 00 ============================================================
