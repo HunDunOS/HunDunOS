@@ -4,7 +4,7 @@
 00 ============================================================
 
 00 ---- 全局变量 ----
-ts 盘缓冲[512] = 0
+ts phc[512] = 0
 ts 盘号 = 0
 ts 盘就绪 = 0
 
@@ -54,7 +54,7 @@ tt 盘选 01 lba 02 -> u64  08
     zz 0
  09
 
-tt 盘读扇区 01 lba 02 -> u64  08
+tt pdd 01 lba 02 -> u64  08
     zt 盘选 01 lba 02
     dc 01 0x1F7  0x20 02
     tz s = zt 盘等 01 02
@@ -68,14 +68,14 @@ tt 盘读扇区 01 lba 02 -> u64  08
     ll  08
         lz i 256  08 ls  09
         tz w = drz 01 0x1F0 02
-        st 01 盘缓冲 ht i ht 2 02 = 01 w % 256 02
-        st 01 盘缓冲 ht i ht 2 ht 1 02 = 01 w / 256 02
+        st 01 phc ht i ht 2 02 = 01 w % 256 02
+        st 01 phc ht i ht 2 ht 1 02 = 01 w / 256 02
         i = i ht 1
      09
     zz 1
  09
 
-tt 盘写扇区 01 lba 02 -> u64  08
+tt pdx 01 lba 02 -> u64  08
     zt 盘选 01 lba 02
     dc 01 0x1F7  0x30 02
     tz s = zt 盘等 01 02
@@ -85,7 +85,7 @@ tt 盘写扇区 01 lba 02 -> u64  08
     tz i = 0
     ll  08
         lz i 256  08 ls  09
-        dcz 01 0x1F0  01 01 盘缓冲 ht i ht 2 02 ht 01 盘缓冲 ht i ht 2 ht 1 02 ht 256 02 02 02
+        dcz 01 0x1F0  01 01 phc ht i ht 2 02 ht 01 phc ht i ht 2 ht 1 02 ht 256 02 02 02
         i = i ht 1
      09
     dc 01 0x1F7  0xE7 02
@@ -93,11 +93,11 @@ tt 盘写扇区 01 lba 02 -> u64  08
     zz 1
  09
 
-tt 盘缓冲十六 01 x  y  n  c 02 -> u64  08
+tt phc十六 01 x  y  n  c 02 -> u64  08
     tz i = 0
     ll  08
         lz i n  08 ls  09
-        绘十六 01 x  y ht i ht 18  01 01 盘缓冲 ht i ht 2 02 ht 01 盘缓冲 ht i ht 2 ht 1 02 ht 256 02 02  c 02
+        绘十六 01 x  y ht i ht 18  01 01 phc ht i ht 2 02 ht 01 phc ht i ht 2 ht 1 02 ht 256 02 02  c 02
         i = i ht 1
      09
     zz 0
@@ -113,7 +113,7 @@ tt 盘自检 01 02 -> u64  08
     盘就绪 = 1
     y 01 03[盘] ATA 盘在，读 LBA 100 …
 04 02
-    lz zt 盘读扇区 01 100 02 0  08
+    lz zt pdd 01 100 02 0  08
         y 01 03[盘] 读取失败
 04 02
         zz 0
@@ -122,14 +122,14 @@ tt 盘自检 01 02 -> u64  08
     tz i = 0
     ll  08
         lz i 8  08 ls  09
-        y 01 01 盘缓冲 ht i 02 02
+        y 01 01 phc ht i 02 02
         y 01 03  04 02
         i = i ht 1
      09
     y 01 03
 04 02
-    lz 盘缓冲 0 0  08
-        lz 盘缓冲 1 0  08
+    lz phc 0 0  08
+        lz phc 1 0  08
             y 01 03[盘] 签名 HDGX 校验通过
 04 02
          09

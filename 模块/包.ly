@@ -4,10 +4,10 @@
 00 ============================================================
 
 00 ---- 全局变量 ----
-ts 盘缓冲[512] = 0
-ts 盘对象数 = 0
-ts 盘索引起 = 0
-ts 盘追加 = 0
+ts phc[512] = 0
+ts phds = 0
+ts phsy = 0
+ts phzj = 0
 ts 包缓冲[16384] = 0
 ts 包缓冲址 = 0
 ts 包址 = 0
@@ -43,12 +43,12 @@ tt 包_读盘 01 lba  扇区数 02 -> u64  08
     tz i = 0
     ll  08
         lz i 扇区数  08 ls  09
-        zt 盘读扇区 01 01 lba ht i 02 02
+        zt pdd 01 01 lba ht i 02 02
         tz j = 0
         ll  08
             lz j 256  08 ls  09
-            st 01 包缓冲址 ht i ht 512 ht j ht 2 02 = 01 盘缓冲 ht j ht 2 02
-            st 01 包缓冲址 ht i ht 512 ht j ht 2 ht 1 02 = 01 盘缓冲 ht j ht 2 ht 1 02
+            st 01 包缓冲址 ht i ht 512 ht j ht 2 02 = 01 phc ht j ht 2 02
+            st 01 包缓冲址 ht i ht 512 ht j ht 2 ht 1 02 = 01 phc ht j ht 2 ht 1 02
             j = j ht 1
          09
         i = i ht 1
@@ -313,7 +313,7 @@ tt 包_装 01 02 -> u64  08
     pc 01 03  装包完成：04 02
     ps 01 包装进数 02
     pc 01 03  个成员，对象区现有 04 02
-    ps 01 盘对象数 02
+    ps 01 phds 02
     pc 01 03  个对象04 02
     ph 01 02
     zz 1

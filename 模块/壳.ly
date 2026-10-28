@@ -32,22 +32,22 @@ ts 词[136] = 0
 ts 词址 = 0
 ts 参址 = 0
 
-ts 取回[512] = 0
-ts 取回址 = 0
+ts hq[512] = 0
+ts hq址 = 0
 
-ts 盘缓冲[512] = 0
+ts phc[512] = 0
 
-ts 盘版本 = 0
-ts 盘总扇区 = 0
-ts 盘索引起 = 0
-ts 盘索引数 = 0
-ts 盘对象起 = 0
-ts 盘追加 = 0
-ts 盘轴起 = 0
+ts phvb = 0
+ts phzs = 0
+ts phsy = 0
+ts phss = 0
+ts phdq = 0
+ts phzj = 0
+ts phzz = 0
 ts 盘轴数 = 0
-ts 盘视图根 = 0
-ts 盘对象数 = 0
-ts 盘世代 = 0
+ts phst = 0
+ts phds = 0
+ts phsd = 0
 
 ts 机器缓[256] = 0
 ts 机器缓2[256] = 0
@@ -608,26 +608,26 @@ tt 列对象 01 02 -> u64  08
     tz 数 = 0
     ll  08
         lz 扇 16  08 ls  09
-        lz zt 盘读扇区 01 01 盘索引起 ht 扇 02 02 0  08 ls  09
+        lz zt pdd 01 01 phsy ht 扇 02 02 0  08 ls  09
         tz j = 0
         ll  08
             lz j 64  08 ls  09
             tz off = 01 j ht 8 02
-            tz h = 01 01 01 01 盘缓冲 ht off 02 ht 01 盘缓冲 ht 01 off ht 1 02 02 ht 256 02 ht 01 盘缓冲 ht 01 off ht 2 02 02 ht 65536 02 ht 01 盘缓冲 ht 01 off ht 3 02 02 ht 16777216 02 02 02 02
+            tz h = 01 01 01 01 phc ht off 02 ht 01 phc ht 01 off ht 1 02 02 ht 256 02 ht 01 phc ht 01 off ht 2 02 02 ht 65536 02 ht 01 phc ht 01 off ht 3 02 02 ht 16777216 02 02 02 02
             lh h 0  08
-                tz lba = 01 01 01 01 盘缓冲 ht 01 off ht 4 02 02 ht 01 盘缓冲 ht 01 off ht 5 02 02 ht 256 02 ht 01 盘缓冲 ht 01 off ht 6 02 02 ht 65536 02 ht 01 盘缓冲 ht 01 off ht 7 02 02 ht 16777216 02 02 02 02
+                tz lba = 01 01 01 01 phc ht 01 off ht 4 02 02 ht 01 phc ht 01 off ht 5 02 02 ht 256 02 ht 01 phc ht 01 off ht 6 02 02 ht 65536 02 ht 01 phc ht 01 off ht 7 02 02 ht 16777216 02 02 02 02
                 pc 01 03   04 02
                 zt 打十六 01 h 02
                 pc 01 03    扇区 04 02
                 ps 01 lba 02
                 pc 01 03    内容「04 02
                 lh zt 盘取对象 01 h 02 0  08
-                    pc 01 取回址 02
+                    pc 01 hq址 02
                  09
                 pc 01 03 」04 02
                 zt 换行 01 02
                 数 = 01 数 ht 1 02
-                zt 盘读扇区 01 01 盘索引起 ht 扇 02 02
+                zt pdd 01 01 phsy ht 扇 02 02
              09
             j = j ht 1
          09
@@ -664,7 +664,7 @@ tt 帮助 01 02 -> u64  08
     zt 换行 01 02
     pc 01 03   cun 内容    存对象（内容寻址）→ 打y哈希04 02
     zt 换行 01 02
-    pc 01 03   qu 哈希     按哈希取回04 02
+    pc 01 03   qu 哈希     按哈希hq04 02
     zt 换行 01 02
     pc 01 03   lie         列出盘上所有对象04 02
     zt 换行 01 02
@@ -728,7 +728,7 @@ tt 执行 01 02 -> u64  08
             zz 0
          09
         pc 01 03  「04 02
-        pc 01 取回址 02
+        pc 01 hq址 02
         pc 01 03 」04 02
         zt 换行 01 02
         zz 0
@@ -746,7 +746,7 @@ tt 执行 01 02 -> u64  08
          09
         pss 01 0xE0554A 02
         pc 01 03   格式化：盘上现有 04 02
-        ps 01 盘对象数 02
+        ps 01 phds 02
         pc 01 03  个对象，全部清掉04 02
         zt 换行 01 02
         zt 盘格式化 01 16384 02
@@ -767,16 +767,16 @@ tt 执行 01 02 -> u64  08
             zz 0
          09
         pc 01 03   格式版本 04 02
-        ps 01 盘版本 02
+        ps 01 phvb 02
         pc 01 03    世代 04 02
-        ps 01 盘世代 02
+        ps 01 phsd 02
         zt 换行 01 02
         pc 01 03   对象数 04 02
-        ps 01 盘对象数 02
+        ps 01 phds 02
         pc 01 03    追加指针 LBA 04 02
-        ps 01 盘追加 02
+        ps 01 phzj 02
         pc 01 03    索引起 LBA 04 02
-        ps 01 盘索引起 02
+        ps 01 phsy 02
         zt 换行 01 02
         zz 0
      09
@@ -989,11 +989,11 @@ tt 显示机器信息 01 02 -> u64  08
         光x = 01 值x ht 96 02
         pss 01 0xF2A93B 02
         pc 01 03 混沌盘 v04 02
-        ps 01 盘版本 02
+        ps 01 phvb 02
         pc 01 03 　04 02
-        ps 01 01 盘总扇区 / 2048 02 02
+        ps 01 01 phzs / 2048 02 02
         pc 01 03  MB　04 02
-        ps 01 盘对象数 02
+        ps 01 phds 02
         pc 01 03  个对象04 02
         zt 行进 01 02
      09
@@ -1055,7 +1055,7 @@ tt 终端开 01 02 -> u64  08
     pc 01 03 --------------------------------------04 02
     zt ph 01 02
     pss 01 0x8FA6C8 02
-    pc 01 03 xin 看硬件 · cun 存对象 · qu 取回 · lie 列出 · pan 盘状态04 02
+    pc 01 03 xin 看硬件 · cun 存对象 · qu hq · lie 列出 · pan 盘状态04 02
     zt ph 01 02
     pss 01 0x8FA6C8 02
     pc 01 03 shui 视图 · fen 签发分身 · qie 切视图 · zhuang 装包 · gongju 跑C工具04 02
@@ -1143,7 +1143,7 @@ tt 壳_初始化 01 02 -> u64  08
     词址 = dz 01 词 02
     史书暂址 = dz 01 史书暂 02
     参址 = 01 dz 01 词 02 ht 64 02
-    取回址 = dz 01 取回 02
+    hq址 = dz 01 hq 02
     包缓冲址 = dz 01 包缓冲 02
     包起始LBA = 8000
     工具LBA = 8100
@@ -1176,13 +1176,13 @@ tt 盘_空盘吗 01 02 -> u64  08
     tz i = 0
     ll  08
         lz i 2  08 ls  09
-        lz zt 盘读扇区 01 i 02 0  08
+        lz zt pdd 01 i 02 0  08
             zz 0
          09
         tz j = 0
         ll  08
             lz j 512  08 ls  09
-            lh 01 盘缓冲 ht j 02 0  08
+            lh 01 phc ht j 02 0  08
                 zz 0
              09
             j = j ht 1
@@ -1215,9 +1215,9 @@ tt 盘_报状态 01 02 -> u64  08
      09
     pss 01 0x00BFA5 02
     pc 01 03 [盘] 读到已有格式 · 世代 04 02
-    ps 01 盘世代 02
+    ps 01 phsd 02
     pc 01 03  · 对象 04 02
-    ps 01 盘对象数 02
+    ps 01 phds 02
     pc 01 03  个04 02
     zt 换行 01 02
     zz 0

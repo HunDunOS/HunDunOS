@@ -21,10 +21,10 @@ ts 名区[80] = 0
 ts 池址 = 0
 ts 名址 = 0
 
-ts 盘缓冲[512] = 0
-ts 盘索引起 = 0
-ts 盘追加 = 0
-ts 盘对象数 = 0
+ts phc[512] = 0
+ts phsy = 0
+ts phzj = 0
+ts phds = 0
 
 00 ============================================================
 00 池位(i, j, off) → 槽号
@@ -177,36 +177,36 @@ tt 视图_存盘 01 02 -> u64  08
     tz i = 0
     ll  08
         lz i 512  08 ls  09
-        st 01 盘缓冲 ht i 02 = 0
+        st 01 phc ht i 02 = 0
         i = i ht 1
      09
-    st 01 盘缓冲 ht 0 02 = 01 视图数 % 256 02
-    st 01 盘缓冲 ht 1 02 = 01 当前视图 % 256 02
+    st 01 phc ht 0 02 = 01 视图数 % 256 02
+    st 01 phc ht 1 02 = 01 当前视图 % 256 02
     i = 0
     ll  08
         lz i 4  08 ls  09
         tz k = 0
         ll  08
             lz k 16  08 ls  09
-            st 01 盘缓冲 ht 01 16 ht i ht 20 ht k 02 02 = 01 视图名 ht 01 i ht 16 ht k 02 02
+            st 01 phc ht 01 16 ht i ht 20 ht k 02 02 = 01 视图名 ht 01 i ht 16 ht k 02 02
             k = k ht 1
          09
-        st 01 盘缓冲 ht 01 16 ht i ht 20 ht 16 02 02 = 01 视图能力 ht i 02 % 256 02
-        st 01 盘缓冲 ht 01 16 ht i ht 20 ht 17 02 02 = 01 01 视图能力 ht i 02 / 256 02 % 256 02
-        st 01 盘缓冲 ht 01 16 ht i ht 20 ht 18 02 02 = 01 视图映射数 ht i 02
-        st 01 盘缓冲 ht 01 16 ht i ht 20 ht 19 02 02 = 01 视图父 ht i 02
+        st 01 phc ht 01 16 ht i ht 20 ht 16 02 02 = 01 视图能力 ht i 02 % 256 02
+        st 01 phc ht 01 16 ht i ht 20 ht 17 02 02 = 01 01 视图能力 ht i 02 / 256 02 % 256 02
+        st 01 phc ht 01 16 ht i ht 20 ht 18 02 02 = 01 视图映射数 ht i 02
+        st 01 phc ht 01 16 ht i ht 20 ht 19 02 02 = 01 视图父 ht i 02
         i = i ht 1
      09
-    lz zt 盘写扇区 01 2 02 0  08
+    lz zt pdx 01 2 02 0  08
         zz 0
      09
     i = 0
     ll  08
         lz i 400  08 ls  09
-        st 01 盘缓冲 ht i 02 = r8 01 01 池址 ht i 02 02
+        st 01 phc ht i 02 = r8 01 01 池址 ht i 02 02
         i = i ht 1
      09
-    zt 盘写扇区 01 3 02
+    zt pdx 01 3 02
     zz 1
  09
 
@@ -217,17 +217,17 @@ tt 视图_读盘 01 02 -> u64  08
     lz zt 盘就绪吗 01 02 0  08
         zz 0
      09
-    lz zt 盘读扇区 01 2 02 0  08
+    lz zt pdd 01 2 02 0  08
         zz 0
      09
-    lz 01 盘缓冲 ht 0 02 0  08
+    lz 01 phc ht 0 02 0  08
         zz 0
      09
-    视图数 = 01 盘缓冲 ht 0 02
+    视图数 = 01 phc ht 0 02
     lh 视图数 4  08
         视图数 = 4
      09
-    当前视图 = 01 盘缓冲 ht 1 02
+    当前视图 = 01 phc ht 1 02
     lh 当前视图 视图数  08
         当前视图 = 0
      09
@@ -237,19 +237,19 @@ tt 视图_读盘 01 02 -> u64  08
         tz k = 0
         ll  08
             lz k 16  08 ls  09
-            st 01 视图名 ht 01 i ht 16 ht k 02 02 = 01 盘缓冲 ht 01 16 ht i ht 20 ht k 02 02
+            st 01 视图名 ht 01 i ht 16 ht k 02 02 = 01 phc ht 01 16 ht i ht 20 ht k 02 02
             k = k ht 1
          09
-        st 01 视图能力 ht i 02 = 01 01 盘缓冲 ht 01 16 ht i ht 20 ht 16 02 02 ht 01 盘缓冲 ht 01 16 ht i ht 20 ht 17 02 ht 256 02 02
-        st 01 视图映射数 ht i 02 = 01 盘缓冲 ht 01 16 ht i ht 20 ht 18 02 02
-        st 01 视图父 ht i 02 = 01 盘缓冲 ht 01 16 ht i ht 20 ht 19 02 02
+        st 01 视图能力 ht i 02 = 01 01 phc ht 01 16 ht i ht 20 ht 16 02 02 ht 01 phc ht 01 16 ht i ht 20 ht 17 02 ht 256 02 02
+        st 01 视图映射数 ht i 02 = 01 phc ht 01 16 ht i ht 20 ht 18 02 02
+        st 01 视图父 ht i 02 = 01 phc ht 01 16 ht i ht 20 ht 19 02 02
         i = i ht 1
      09
-    zt 盘读扇区 01 3 02
+    zt pdd 01 3 02
     i = 0
     ll  08
         lz i 400  08 ls  09
-        st 01 池址 ht i 02 = 01 盘缓冲 ht i 02
+        st 01 池址 ht i 02 = 01 phc ht i 02
         i = i ht 1
      09
     zt 视图_载入 01 当前视图 02

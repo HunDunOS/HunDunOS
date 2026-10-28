@@ -10,8 +10,8 @@ ts 区y = 0
 ts 区宽 = 0
 ts 区高 = 0
 ts 当前色 = 0
-ts 取回址 = 0
-ts 取回[512] = 0
+ts hq址 = 0
+ts hq[512] = 0
 
 ts 编区x = 0
 ts 编区y = 0
@@ -270,7 +270,7 @@ tt 编_读 01 h 02 -> u64  08
      09
     tz n = 0
     ll  08
-        tz c = fh 01 取回址 ht n 02
+        tz c = fh 01 hq址 ht n 02
         lz c 0  08 ls  09
         lh n 2000  08 ls  09
         st 01 编缓冲 ht n 02 = c
