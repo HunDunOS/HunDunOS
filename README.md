@@ -105,15 +105,15 @@ HD> xin
 
 ### 依赖
 
-只要三样：
-
 ```
-clang           编编译器本身（lyc.c）
-binutils        as / ld / objcopy（最后一步汇编链接）
-python3         打包工具（xiso.py 等）
+gcc            编编译器本身（lyc.c）
+binutils       as / ld / objcopy（x86-64 目标；ld 要支持 i386pep）
+mkfs.vfat      焊 ESP 镜像
+mtools         mcopy / mmd（往 FAT32 里塞门票）
+python3        打 XBP 道标（工具/打dao.py）
 ```
 
-可选：`qemu-system-i386` 用来跑。
+跑起来用 `qemu-system-x86_64` + OVMF 固件。
 
 ### 构建
 
@@ -121,30 +121,30 @@ python3         打包工具（xiso.py 等）
 git clone <这个仓库>
 cd hundun
 
-sh 构建/构建.sh 终端 混沌终端.iso      # 命令行版
-sh 构建/构建.sh 桌面 混沌桌面.iso      # 图形桌面版
+sh 构建/建UEFI.sh                    # 出 构建/uefi/混沌.img
+sh 构建/建UEFI.sh 我的.img            # 换个名字
 ```
 
-出来的 ISO 可以直接给 QEMU / VirtualBox / VMware 用。
+一条命令走完七步：`lyc` 编六爻主体 → `as` 收汇编 → `ld -m i386pep` 链成 PE32+ →
+`打dao.py` 打两枚 XBP 道标包 → `mkfs.vfat` + `mcopy` 焊 64MB ESP 镜像 →
+`dd` 把阴（LBA 60000）和阳（LBA 60100）当**裸扇区**钉进去。
 
 ### 运行
 
 ```sh
-qemu-system-i386 -cdrom 混沌终端.iso -boot d -m 256 -vga std
+cp /usr/share/qemu/edk2-i386-vars.fd vars.fd
+
+qemu-system-x86_64 -m 256 \
+  -drive if=pflash,format=raw,readonly=on,file=/usr/share/qemu/edk2-x86_64-code.fd \
+  -drive if=pflash,format=raw,file=vars.fd \
+  -drive format=raw,file=构建/uefi/混沌.img
 ```
 
-**注意两点：**
+**注意三点：**
 
-- `-vga std` 要给 —— 终端是画在帧缓冲上的（见下面"为什么要帧缓冲"）
-- 虚拟机要用 **BIOS 引导，不要 UEFI**（VirtualBox 别勾 EFI，Hyper-V 必须第 1 代）
-
-想能存东西就再加一个盘（没有也能开机，只是不能存）：
-
-```sh
-qemu-system-i386 -cdrom 混沌终端.iso -boot d -m 256 -vga std -hda 混沌盘.img
-```
-
-空白盘会被自动格式化，随便造一个就行。
+- 走 **UEFI**，不是 BIOS —— 整条引导链里没有实模式、没有 El Torito、没有 INT 13h
+- 要看到日志就加 `-serial stdio`，或者 `-serial file:log.txt` 事后看
+- 阴 / 阳 在**目录树外面**（裸扇区 60000 / 60100），别指望在同名文件里找到它们
 
 ### 为什么要帧缓冲
 
@@ -240,7 +240,7 @@ as --64 主.s    -o 主.o
 ld -m elf_x86_64 -T 链接/link_xboot.ld -o kernel.elf 运行时.o 甲.o 乙.o 主.o
 ```
 
-（`构建/构建.sh` 把这些串好了，实际不用手敲。）
+（`构建/建UEFI.sh` 把这些串好了，实际不用手敲。）
 
 ---
 
@@ -323,67 +323,78 @@ tt view_签发 01 名  能力 02 -> u64  08
 
 **上面所有东西 —— 图形、文字、鼠标、键盘、对象区、应用、桌面、磁盘驱动 —— 都用六爻写。**
 
-### 引导链
+### 引导链（UEFI · 全 64 位）
 
 ```
-固件（BIOS）
- → 引导器/Dao.asm      512 字节 El Torito，点火者
-     · 段寄存器全部归零，之后一律用线性地址
-     · 存下引导盘号
-     · INT 13h 按 YU1! 装载单，亲自把阳读进 0x9000
-     · 交棒 0x7E00
- → 引导器/yu0.asm      阴 · 物理基座（实模式 → 保护模式 → 长模式）
-     · 开 A20 / 取内存（E801）/ 设 VBE（优先 1920×1080）
-     · 用 BIOS 扩展读把内核读进 0x10000
-     · 建 GDT → 保护模式 → 2048 个 2MB 大页 = 0–4GB 恒等映射 → 纯血 64 位
-     · 把阳 rep movsd 搬到 0x200000（只搬，不执行）
-     · 填 XBP 引导信息块，直接跳 hundun
- → hundun 内核        0x10000
-     · 起来后按 XBP+64 叫醒阳
- → 引导器/yu1.asm      阳 · 独立探测轨（0x200000，不在引导映像里）
-     · 走 0xCF8/0xCFC 扫总线 / 在 0xE0000–0xFFFFF 找 RSD PTR
-     · 能力表写 0x6000 → ret 回内核
+固件（UEFI）
+ → /EFI/BOOT/BOOTX64.EFI     唯一妥协：主板只认这个路径，这是入场门票
+     · 一进门就是 64 位长模式：没有 A20、没有实模式、没有 INT 13h、没有 VBE
+     · 拿 GOP，把帧缓冲地址先存下来（ExitBootServices 之后就靠它画）
+     · 拿 LoadedImage → DeviceHandle → Block I/O
+ → 物理 LBA 裸读（不认文件名、不认路径、不认目录树）
+     LBA 60000 → yu0.dao（卦象 全阴 0）
+     LBA 60100 → yu1.dao（卦象 全阳 63）
+ → XBP 道标校验（四道闸，任一道不符直接停机）
+     道标 "HUNDUNV1" → 头印自校验 → 卦象 → 机器码指纹 FNV-1a 64
+ → 铺码：阴 0x100000 / 阳 0x200000
+ → 画符咒（GOP 还在的时候）
+ → GetMemoryMap → ExitBootServices → 点火阴轨
 ```
 
-**XBP 是自研的引导协议**（不是 Multiboot）：RAX = 魔数，RBX = 信息块地址。
+串口实录：
+
+```
+[XBP] load YIN  yu0 @0x100000 .. hash 0x5F6E9CA8548E0F99 OK
+[XBP] load YANG yu1 @0x200000 .. hash 0x72D3020192E129C5 OK
+[XBP] ExitBootServices -> ignite yu0
+[yu0] 阴轨基座就位 · Long Mode OK · 页表由固件已建
+```
+
+### XBP：混沌引导协议
+
+`.dao` = 64 字节道标 + 纯机器码。**道标是八个 u64，一个 32 位字段都没有。**
+
+| 偏移 | 名 | 含义 |
+|---|---|---|
+| +0 | 道标 | `"HUNDUNV1"` |
+| +8 | 卦象 | 低 6 位六爻：全阴 = 0（yu0）、全阳 = 63（yu1） |
+| +16 | 落址 | 加载物理地址 |
+| +24 | 长度 | 机器码字节数 |
+| +32 | 指纹 | 机器码 FNV-1a 64 |
+| +40 | 入口 | 相对落址的入口偏移 |
+| +48 | 世代 | 第几版（可回退） |
+| +56 | 头印 | 前 56 字节的 FNV-1a 64（道标自校验） |
+
+打包：`python3 工具/打dao.py yu0.dao 0 0x100000 裸码.bin`
+焊盘：`dd if=yu0.dao of=混沌.img bs=512 seek=60000 conv=notrunc`
+
+**这不是加载文件，是按指纹认领两块物理数据。**
 
 ### 双 yu：自由引导
 
-引导器不是一条线，是一张阴阳图。**点火的和干活的分开，夯地基的和摸硬件的分开。**
+引导器不是一条线，是一张阴阳图。**点火的和干活的、夯地基的和摸硬件的，各自独立。**
 
 ```
-              Dao            原始 · 点火者（0x7C00，512 字节）
-               │             段归零 / 存盘号 / 亲自把 yu1 读进内存 / 交棒
-      ┌────────┴────────┐
-      │                 │
-  yu0（阴）         yu1（阳）          ← 两块料，不在一条线上，不互相调用
-  物理基石          动态创生
-  0x7E00            0x9000 → 0x200000
-      │
-      └──→ Hundun（合成 · 内核，0x10000）
+                UEFI 固件
+                    │（唯一妥协：BOOTX64.EFI 这个路径）
+                 Dao.efi
+                    │  拿 GOP / 拿 Block I/O / 按 LBA 裸读 + 指纹校验
+        ┌───────────┴───────────┐
+        │                       │
+   yu0.dao（阴）            yu1.dao（阳）
+   LBA 60000 → 0x100000     LBA 60100 → 0x200000
+   被 Dao 点火执行           躺着，一个字节都不执行
+        │                       │
+        └────→ hundun 内核 ─────┘
+                    └─ 六爻代码 调用 0x200000 唤醒阳
 ```
 
 | 谁 | 干什么 | 绝不干什么 |
 |---|---|---|
-| **Dao** | 段归零、存盘号、用 INT 13h 把 yu1 从盘上读进 0x9000、按 `YU1!` 装载单填 DAP | 不建表、不切模式、不碰内核 |
-| **yu0（阴）** | 开 A20、取内存、VBE、读内核、建 GDT、**2048 个 2MB 大页 = 0–4GB 恒等映射**、切纯血 64 位、把阳 `rep movsd` 搬到 0x200000、**直接跳 hundun** | 绝不跳 yu1，绝不碰 PCI/ACPI |
-| **yu1（阳）** | 在 64 位环境里醒来：走 0xCF8/0xCFC 扫总线、在 0xE0000–0xFFFFF 里找 `RSD PTR`、把能力表写 0x6000，干完 `ret` 回内核 | 不建表、不切模式、不碰内核 |
-| **Hundun** | 拿 `XBP + 64` 叫醒阳，收下这台机器专属的能力表 | — |
-
-**阳是独立文件，不是焊在镜像里的**：ISO 里它是单独一份，Dao 按装载单自己去读；yu0 只搬不执行；等内核跑起来、由 `模块/阳.ly` 的 `阳_醒` 跳过去。这就是"分身"的物理形态 —— 内核还没起来，阳已经在内存里躺着等指令了。
-
-| 内存 | 装的是什么 |
-|---|---|
-| 0x0500 | XBP 引导信息块 |
-| 0x6000 | 能力表（阳往上填：魔数 CABL / 版本 / 设备数 / 固件表） |
-| 0x6100 | 驱动表（能力位 + 厂商号，内核照着这张表挂专属驱动） |
-| 0x7C00 | Dao |
-| 0x7E00 | yu0（阴） |
-| 0x9000 | 阳的暂存位 |
-| 0x10000 | hundun 内核 |
-| 0x200000 | 阳的正式席位 |
-
-XBP 尾部新增字段：`+56` 完整 64 位内核入口、`+64` 阳的地址、`+68` 阳的大小、`+72` 阴完工、`+76` 阳待唤醒。
+| **Dao.efi** | 拿 GOP / 拿块设备 / 按 LBA 读两条轨 / 四道闸校验 / 铺码 / 存帧缓冲 / ExitBootServices / 点火阴 | 不知道任何文件名，不认识任何路径 |
+| **yu0（阴）** | 被点火后建立最终页表、宣告基座就位、给内核让位 | 不碰 PCI/ACPI，不唤醒阳 |
+| **yu1（阳）** | 在 0x200000 沉睡；被内核唤醒后扫总线、找 ACPI、写能力表 | 不自己启动，不等同于被加载 |
+| **Hundun** | 收下双轨，用六爻去唤醒阳，拿到这张机器专属的能力表 | — |
 
 ### 盘格式：混沌盘
 
@@ -530,20 +541,22 @@ lyc: 六爻 stage0 v0.4 -> 输出.s（2 字符串 / 0 全局 / 1 函数）
   盘.ly 盘格式.ly 压缩.ly     盘驱动 / 盘格式 / LZSS
   机器.ly 壳.ly 主终端.ly     硬件探测 / 命令行壳 / 终端入口
   由拆分.py生成/              构建时从 桌面.ly 切出来的四块
-引导器/Dao.asm             点火者（512 字节 El Torito，读阳、交棒）
-引导器/yu0.asm             阴 · 物理基座（A20 / 4GB 恒等映射 / 长模式 / 直达内核）
-引导器/yu1.asm             阳 · 独立探测轨（链在 0x200000，由 Dao 当独立文件读入）
-引导器/yu1.ly              阳的主体：六爻写的 PCI / ACPI 探测
-引导器/yu1stub.asm         阳的裸机桩（清 BSS / 备栈 / 干完 ret 回内核）
-引导器/Dao.ld              引导器链接脚本：Dao 0x7C00 / yu0 0x7E00
-运行时/图形64.asm 原语.asm    帧缓冲运行时 / 机器原语（全 64 位：`.code64`，参数 8 字节一位）
+引导器/Dao.ly              点火者主体（六爻写：画符咒，交给 UEFI 桩的 fn_zhu）
+引导器/efi桩.asm           UEFI 最小汇编层：GOP / Block I/O / XBP 解析 / ExitBootServices
+引导器/yu0裸.asm           阴的裸块源码（链 0x100000）
+引导器/yu1裸.asm           阳的裸块源码（链 0x200000）
+引导器/yu1.ly              阳的探测逻辑（六爻写：PCI / ACPI）
+引导器/yu0.dao yu1.dao     带 XBP 道标的成品（构建时重新生成）
+运行时/efi图形.asm           UEFI 帧缓冲运行时（全 64 位，GOP 直写，参数 8 字节一位）
+运行时/原语.asm              机器原语（全 64 位：端口 / 内存 / CPUID / 停机 / 调用）
 链接/link_xboot.ld         内核链接脚本（加载到 0x10000，入口 _start 落在映像偏移 0）
-工具/xiso.py                自研 ISO 9660 + El Torito 打包器
+工具/打dao.py               XBP 打包器：八个 u64 道标 + 机器码
+工具/xiso.py                自研 ISO 9660 + El Torito 打包器（BIOS 时代遗留，UEFI 路线不再使用）
 工具/xelf.py                ELF64 摊平器：给自研 XBP 引导链算加载地址/入口/BSS（不用 objcopy）
 工具/造字.py                 从 Unifont 生成点阵字库
 工具/拆分.py                 把 桌面.ly 切成模块
 工具/run.py                 一键跑 ISO + 抓屏
-构建/构建.sh                 一键构建
+构建/建UEFI.sh              一键构建（UEFI 全链）
 文档/                        18 份：设计规范 / 七公理 / 分身模型 / 时态内核 /
                              单调轴 / 安全模型 / 盘与包 / 命名规范 / 自举路线 /
                              六爻速查 / 分层模型 / 设计思路集 / 调度器答疑
