@@ -1,19 +1,20 @@
 # ============================================================================
-#  混沌 原语模块（原语.asm）
+#  混沌 原语模块（原语.asm）—— 64 位版
 #
-#  这是整个内核【唯一】应该存在的汇编，因为它干的事机器之外无法表达：
+#  内核里唯一该存在的汇编：机器之外表达不了的那几件。
 #      · 读写 I/O 端口
-#      · 按 32 位读写任意内存
+#      · 按字节 / 按字 / 按双字读写任意内存
 #      · 停机
+#      · 调到任意地址（可返回）
+#      · CPUID
 #
-#  就这么几个。上面所有东西（图形、文字、鼠标、键盘、对象区、应用、
-#  桌面、磁盘驱动）都应该用新语写。
-#
-#  参数约定同新语：从右到左…… 不对，是【从左到右】压栈，
-#  所以第 n 个参数在 [esp+4]，第 1 个在 [esp+4n]；配合 pushad 再多 32。
+#  参数约定：从左到右压栈，每个参数 8 字节。
+#      第 1 个参数 [rsp + 8]，第 2 个 [rsp + 16]，第 n 个 [rsp + 8n]
+#      （call 压了 8 字节返回地址）
+#  一律 u64 进出，不存半截。
 # ============================================================================
 
-    .code32
+    .code64
     .intel_syntax noprefix
     .section .text
 
@@ -22,27 +23,23 @@
 # ---------------------------------------------------------------------------
     .globl _pr_in8
 _pr_in8:
-    push ebx
-    push edx
-    mov edx, [esp + 12]
+    mov rdx, [rsp + 8]
+    xor eax, eax
     in al, dx
-    movzx eax, al
-    pop edx
-    pop ebx
     ret
 
-# ---------------------------------------------------------------------------
-#  端入字( 端口 ) → 16 位
-# ---------------------------------------------------------------------------
     .globl _pr_in16
 _pr_in16:
-    push ebx
-    push edx
-    mov edx, [esp + 12]
+    mov rdx, [rsp + 8]
+    xor eax, eax
     in ax, dx
-    movzx eax, ax
-    pop edx
-    pop ebx
+    ret
+
+    .globl _pr_in32
+_pr_in32:
+    mov rdx, [rsp + 8]
+    xor eax, eax
+    in eax, dx
     ret
 
 # ---------------------------------------------------------------------------
@@ -50,69 +47,59 @@ _pr_in16:
 # ---------------------------------------------------------------------------
     .globl _pr_out8
 _pr_out8:
-    push edx
-    mov edx, [esp + 12]             # 端口 = 第 1 个参数（压得最早 → 最深）
-    mov eax, [esp + 8]              # 值   = 第 2 个参数（压得最晚 → 最浅）
+    mov rdx, [rsp + 8]
+    mov rax, [rsp + 16]
     out dx, al
-    pop edx
     ret
 
-# ---------------------------------------------------------------------------
-#  端出字( 端口, 值 )
-# ---------------------------------------------------------------------------
     .globl _pr_out16
 _pr_out16:
-    push edx
-    mov edx, [esp + 12]
-    mov eax, [esp + 8]
+    mov rdx, [rsp + 8]
+    mov rax, [rsp + 16]
     out dx, ax
-    pop edx
+    ret
+
+    .globl _pr_out32
+_pr_out32:
+    mov rdx, [rsp + 8]
+    mov rax, [rsp + 16]
+    out dx, eax
     ret
 
 # ---------------------------------------------------------------------------
-#  读32( 地址 ) → 32 位
-# ---------------------------------------------------------------------------
-    .globl _pr_ld32
-_pr_ld32:
-    push ebx
-    mov eax, [esp + 8]
-    mov eax, [eax]
-    pop ebx
-    ret
-
-# ---------------------------------------------------------------------------
-#  写32( 地址, 值 )
-# ---------------------------------------------------------------------------
-    .globl _pr_st32
-_pr_st32:
-    push ebx
-    mov eax, [esp + 8]              # 地址
-    mov ecx, [esp + 12]            # 值
-    mov [eax], ecx
-    pop ebx
-    ret
-
-# ---------------------------------------------------------------------------
-#  读8( 地址 ) → 字节
+#  读8( 地址 ) / 写8( 地址, 值 )
 # ---------------------------------------------------------------------------
     .globl _pr_ld8
 _pr_ld8:
-    mov eax, [esp + 4]
-    movzx eax, byte ptr [eax]
+    mov rax, [rsp + 8]
+    movzx rax, byte ptr [rax]
     ret
 
-# ---------------------------------------------------------------------------
-#  写8( 地址, 值 )
-# ---------------------------------------------------------------------------
     .globl _pr_st8
 _pr_st8:
-    mov eax, [esp + 4]              # 地址
-    mov ecx, [esp + 8]              # 值
-    mov [eax], cl
+    mov rax, [rsp + 8]
+    mov rcx, [rsp + 16]
+    mov [rax], cl
     ret
 
 # ---------------------------------------------------------------------------
-#  停机()
+#  读32( 地址 ) / 写32( 地址, 值 )   —— 名字里的"32"是访问宽度，返回值仍是 u64
+# ---------------------------------------------------------------------------
+    .globl _pr_ld32
+_pr_ld32:
+    mov rax, [rsp + 8]
+    mov eax, dword ptr [rax]
+    ret
+
+    .globl _pr_st32
+_pr_st32:
+    mov rax, [rsp + 8]
+    mov rcx, [rsp + 16]
+    mov dword ptr [rax], ecx
+    ret
+
+# ---------------------------------------------------------------------------
+#  停机
 # ---------------------------------------------------------------------------
     .globl _pr_halt
 _pr_halt:
@@ -121,73 +108,87 @@ _pr_halt:
     jmp _pr_halt
 
 # ---------------------------------------------------------------------------
-#  读CPUID( 功能码, 子码 ) —— 结果放在下面四个全局里
+#  调用( 目标, a, b, c, d ) —— 可返回
+#  第 5 个参数（最先压、最深）是目标：[rsp + 40]
 # ---------------------------------------------------------------------------
-    .section .data
-    .globl _cpuid_a, _cpuid_b, _cpuid_c, _cpuid_d
-_cpuid_a: .long 0
-_cpuid_b: .long 0
-_cpuid_c: .long 0
-_cpuid_d: .long 0
+    .globl _pr_call
+_pr_call:
+    push rax
+    mov dx, 0x3F8
+    mov al, 67
+    out dx, al
+    pop rax
+    mov rax, [rsp + 40]
+    # ---- 临时：把目标地址打成 16 进制 ----
+    push rbx
+    push rcx
+    push rdx
+    push rax
+    mov rbx, rax
+    mov ecx, 16
+.Lhex:
+    rol rbx, 4
+    mov eax, ebx
+    and al, 15
+    add al, 48
+    cmp al, 58
+    jb .Lout
+    add al, 7
+.Lout:
+    mov dx, 0x3F8
+    out dx, al
+    dec ecx
+    jnz .Lhex
+    pop rax
+    pop rdx
+    pop rcx
+    pop rbx
+    call rax
+    ret
 
-    .section .text
+# ---------------------------------------------------------------------------
+#  读CPUID( 叶, 子叶 ) → 把 eax/ebx/ecx/edx 存起来，再单独取
+# ---------------------------------------------------------------------------
     .globl _pr_cpuid
 _pr_cpuid:
-    push ebx
-    push ecx
-    push edx
-    mov eax, [esp + 20]             # 功能码（第 1 个参数，最深）
-    mov ecx, [esp + 16]             # 子码
+    push rbx
+    mov eax, [rsp + 16]             # 叶
+    mov ecx, [rsp + 24]             # 子叶
     cpuid
     mov [_cpuid_a], eax
     mov [_cpuid_b], ebx
     mov [_cpuid_c], ecx
     mov [_cpuid_d], edx
-    pop edx
-    pop ecx
-    pop ebx
+    pop rbx
+    xor eax, eax
     ret
 
     .globl _pr_ca
-_pr_ca:  mov eax, [_cpuid_a]  ; ret
+_pr_ca:
+    mov eax, [_cpuid_a]
+    ret
+
     .globl _pr_cb
-_pr_cb:  mov eax, [_cpuid_b]  ; ret
+_pr_cb:
+    mov eax, [_cpuid_b]
+    ret
+
     .globl _pr_cc
-_pr_cc:  mov eax, [_cpuid_c]  ; ret
+_pr_cc:
+    mov eax, [_cpuid_c]
+    ret
+
     .globl _pr_cd
-_pr_cd:  mov eax, [_cpuid_d]  ; ret
-
-# ---------------------------------------------------------------------------
-#  端出32 / 端入32（PCI 配置空间要用）
-# ---------------------------------------------------------------------------
-    .globl _pr_out32
-_pr_out32:
-    push edx
-    mov edx, [esp + 12]             # 端口（第 1 个，最深）
-    mov eax, [esp + 8]              # 值（第 2 个）
-    out dx, eax
-    pop edx
-    ret
-
-    .globl _pr_in32
-_pr_in32:
-    push edx
-    mov edx, [esp + 8]
-    in eax, dx
-    pop edx
+_pr_cd:
+    mov eax, [_cpuid_d]
     ret
 
 # ---------------------------------------------------------------------------
-#  调用( 目标地址, a, b, c, d ) —— 跳到任意地址执行
-#
-#  新语的参数是从左到右压栈，所以进入本函数时栈上是：
-#      [esp+0]  = 返回地址
-#      [esp+4]  = d    [esp+8]  = c
-#      [esp+12] = b    [esp+16] = a    [esp+20] = 目标地址
-#  目标函数期望的正是这个布局（它的参数在 [esp+4..16]）——
-#  所以【直接尾跳】就行，栈一个字都不用动，目标函数的 ret 天然回到新语。
+#  数据
 # ---------------------------------------------------------------------------
-    .globl _pr_call
-_pr_call:
-    mov eax, [esp + 20]
-    jmp eax
+    .section .data
+    .align 8
+_cpuid_a:  .quad 0
+_cpuid_b:  .quad 0
+_cpuid_c:  .quad 0
+_cpuid_d:  .quad 0
