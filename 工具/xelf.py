@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-xelf.py —— 极简 ELF32 读取器（自研路线图阶段 2 的第一步）
+xelf.py —— ELF64 摊平器（自研 XBP 引导链的一环）
 
-用途：把 xyc 生成、ld 链出来的 kernel.elf 摊平成"从加载地址开始的连续字节"，
-      同时取出入口地址和 BSS 边界，供引导器补丁表回填。
+用途：把 ld 链出来的 kernel.elf 摊平成"从加载地址开始的连续字节"，
+      同时取出入口地址、加载地址和 BSS 边界，供 XBP 补丁表回填。
 
-不依赖 objcopy。只认 i386 小端 ELF32 可执行文件。
+不依赖 objcopy。认小端 ELF64（内核是纯血 64 位长模式），
+顺带兼容 ELF32，老镜像也能读。
 """
 import struct
 
@@ -22,23 +23,40 @@ def load(path):
     d = open(path, "rb").read()
     if not is_elf(d):
         raise ValueError("%s 不是 ELF" % path)
-    if d[4] != 1 or d[5] != 1:
-        raise ValueError("只支持 32 位小端 ELF")
+    is64 = (d[4] == 2)
+    if d[5] != 1:
+        raise ValueError("只支持小端 ELF")
 
-    e_entry = struct.unpack_from("<I", d, 0x18)[0]
-    e_phoff = struct.unpack_from("<I", d, 0x1C)[0]
-    e_shoff = struct.unpack_from("<I", d, 0x20)[0]
-    e_phentsize = struct.unpack_from("<H", d, 0x2A)[0]
-    e_phnum = struct.unpack_from("<H", d, 0x2C)[0]
-    e_shentsize = struct.unpack_from("<H", d, 0x2E)[0]
-    e_shnum = struct.unpack_from("<H", d, 0x30)[0]
+    if is64:
+        e_entry = struct.unpack_from("<Q", d, 0x18)[0]
+        e_phoff = struct.unpack_from("<Q", d, 0x20)[0]
+        e_shoff = struct.unpack_from("<Q", d, 0x28)[0]
+    else:
+        e_entry = struct.unpack_from("<I", d, 0x18)[0]
+        e_phoff = struct.unpack_from("<I", d, 0x1C)[0]
+        e_shoff = struct.unpack_from("<I", d, 0x20)[0]
+    if is64:
+        e_phentsize = struct.unpack_from("<H", d, 0x36)[0]
+        e_phnum = struct.unpack_from("<H", d, 0x38)[0]
+        e_shentsize = struct.unpack_from("<H", d, 0x3A)[0]
+        e_shnum = struct.unpack_from("<H", d, 0x3C)[0]
+    else:
+        e_phentsize = struct.unpack_from("<H", d, 0x2A)[0]
+        e_phnum = struct.unpack_from("<H", d, 0x2C)[0]
+        e_shentsize = struct.unpack_from("<H", d, 0x2E)[0]
+        e_shnum = struct.unpack_from("<H", d, 0x30)[0]
 
     # ---- 段表 ----
     loads = []
     for i in range(e_phnum):
         o = e_phoff + i * e_phentsize
-        p_type, p_offset, p_vaddr, p_paddr, p_filesz, p_memsz = \
-            struct.unpack_from("<6I", d, o)
+        if is64:
+            p_type = struct.unpack_from("<I", d, o)[0]
+            p_offset, p_vaddr, p_paddr, p_filesz, p_memsz = \
+                struct.unpack_from("<5Q", d, o + 8)
+        else:
+            p_type, p_offset, p_vaddr, p_paddr, p_filesz, p_memsz = \
+                struct.unpack_from("<6I", d, o)
         if p_type == PT_LOAD:
             loads.append((p_offset, p_vaddr, p_filesz, p_memsz))
     if not loads:
@@ -60,15 +78,25 @@ def load(path):
         o = e_shoff + i * e_shentsize
         sh_type, = struct.unpack_from("<I", d, o + 4)
         if sh_type == SHT_SYMTAB:
-            sh_offset, sh_size, sh_link = struct.unpack_from("<3I", d, o + 16)
+            if is64:
+                sh_offset = struct.unpack_from("<Q", d, o + 24)[0]
+                sh_size = struct.unpack_from("<Q", d, o + 32)[0]
+                sh_link = struct.unpack_from("<I", d, o + 40)[0]
+            else:
+                sh_offset, sh_size, sh_link = struct.unpack_from("<3I", d, o + 16)
             symtab_off, symtab_size, symtab_link = sh_offset, sh_size, sh_link
             break
     if symtab_off:
-        strtab_off = struct.unpack_from("<I", d, e_shoff + symtab_link * e_shentsize + 16)[0]
-        n = symtab_size // 16
+        strtab_off = struct.unpack_from("<Q" if is64 else "<I", d, e_shoff + symtab_link * e_shentsize + (24 if is64 else 16))[0]
+        step = 24 if is64 else 16
+        n = symtab_size // step
         for i in range(n):
-            o = symtab_off + i * 16
-            st_name, st_value = struct.unpack_from("<II", d, o)
+            o = symtab_off + i * step
+            if is64:
+                st_name, = struct.unpack_from("<I", d, o)
+                st_value, = struct.unpack_from("<Q", d, o + 8)
+            else:
+                st_name, st_value = struct.unpack_from("<II", d, o)
             if st_name == 0:
                 continue
             e = d.index(b"\x00", strtab_off + st_name)
