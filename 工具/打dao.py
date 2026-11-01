@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 打dao.py —— XBP 打包器（纯 64 位版）
 
