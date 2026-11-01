@@ -5,11 +5,34 @@
 _start:
     lea rsi, [rip + m1]
     call 打
-    # 阴轨：地基已由固件铺好，这里只宣告 + 停住等内核
 停:
+    mov rsp, 0x70000
+    xor rbp, rbp
+    mov dx, 0x3F8
+    mov al, 74
+    out dx, al
+    mov rax, [0x7080]
+    mov rbx, rax
+    mov ecx, 12
+.h1:
+    rol rbx, 4
+    mov al, bl
+    and al, 15
+    add al, 48
+    cmp al, 58
+    jb .h2
+    add al, 7
+.h2:
+    out dx, al
+    dec ecx
+    jnz .h1
+    test rax, rax
+    jz .挂
+    jmp rax
+.挂:
     cli
     hlt
-    jmp 停
+    jmp .挂
 打:
     mov dx, 0x3F8
 .l: movzx eax, byte ptr [rsi]
