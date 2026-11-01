@@ -1,17 +1,6 @@
-# ============================================================================
-#  efi图形.asm —— UEFI 下的帧缓冲运行时（纯 64 位）
-#
-#  只实现六爻内建用得到的那几件：
-#      屏宽 / 屏高 / 绘点 / 绘块 / 绘字
-#  帧缓冲地址和屏参由 efi桩.asm 填好（GOP 直接给，不需要 VBE）
-#
-#  参数约定：从左到右压栈，每参数 8 字节
-#      第 1 个参数 [rsp + 8]，第 n 个 [rsp + 8n]
-# ============================================================================
     .intel_syntax noprefix
     .section .text
 
-# ---- 屏宽 / 屏高 ----
     .globl _tgt
 _tgt:        .quad 0
     .globl _tgt_pitch
@@ -22,7 +11,6 @@ _gfx_getw:
     mov rax, [rip + _efi_w]
     ret
 
-# ---- 把绘制目标切到屏幕 ----
     .globl _gfx_screen
 _gfx_screen:
     mov rax, [rip + _efi_fb]
@@ -46,7 +34,6 @@ _gfx_getpitch:
     mov rax, [rip + _efi_pitch]
     ret
 
-# ---- 写点：rcx=x rdx=y r15d=色（按 _efi_scale 放大成方块）----
 写点:
     push rax
     push r8
@@ -85,8 +72,6 @@ _gfx_getpitch:
     pop rax
     ret
 
-# ---- 颜色编码：eax = 0x00RRGGBB → eax = 真机上该写的值 ----
-#  fmt 0/1 = 标准 32bpp（直通），fmt 2 = BitMask（按掩码移位），其它直通
 编码色:
     push rcx
     push rdx
@@ -95,7 +80,6 @@ _gfx_getpitch:
     mov rax, [rip + _efi_fmt]
     cmp rax, 2
     jne .enc_raw
-    # r = (c>>16)&0FF , g = (c>>8)&0FF , b = c&0FF
     mov ebx, r11d
     shr ebx, 16
     and ebx, 0xFF
@@ -122,7 +106,6 @@ _gfx_getpitch:
     pop rcx
     ret
 
-# ---- 绘点( x, y, 色 ) ----
     .globl _gfx_px
 _gfx_px:
     mov r8, [rsp + 8]
@@ -141,15 +124,14 @@ _gfx_px:
 .px_end:
     ret
 
-# ---- 绘块( x, y, 宽, 高, 色 ) ----
     .globl _gfx_fill
 _gfx_fill:
     push rbx
-    mov rdi, [rsp + 48]             # x（第 1 个，最深）
-    mov rsi, [rsp + 40]             # y
-    mov r8,  [rsp + 32]             # 宽
-    mov r9,  [rsp + 24]             # 高
-    mov eax, [rsp + 16]             # 色（最后压）
+    mov rdi, [rsp + 48]
+    mov rsi, [rsp + 40]
+    mov r8,  [rsp + 32]
+    mov r9,  [rsp + 24]
+    mov eax, [rsp + 16]
     call 编码色
     mov r10, [rip + _tgt]
     test r10, r10
@@ -183,7 +165,6 @@ _gfx_fill:
     pop rbx
     ret
 
-# ---- 绘字( x, y, 串, 色 ) → 返回宽度 ----
     .globl _gfx_text
 _gfx_text:
     push rbx
@@ -191,12 +172,12 @@ _gfx_text:
     push r13
     push r14
     push r15
-    mov r12, [rsp + 72]             # x
-    mov r13, [rsp + 64]             # y
-    mov r14, [rsp + 56]             # 串（UTF-8）
+    mov r12, [rsp + 72]
+    mov r13, [rsp + 64]
+    mov r14, [rsp + 56]
     mov eax, [rsp + 48]
     call 编码色
-    mov r15d, eax                   # 色（编码后）
+    mov r15d, eax
     mov rbx, r12
     mov r11, [rip + _tgt]
     test r11, r11
@@ -209,7 +190,6 @@ _gfx_text:
     cmp al, 0x80
     jb .t_ascii
 
-    # ---- 3 字节 UTF-8 ----
     and eax, 0x0F
     shl eax, 12
     movzx ecx, byte ptr [r14 + 1]
@@ -221,7 +201,6 @@ _gfx_text:
     or eax, ecx
     add r14, 3
 
-    # ---- 二分找字模 ----
     push rsi
     push rdi
     xor esi, esi
