@@ -42,26 +42,40 @@
 开机进命令行，敲几条命令，你会看到这些东西：
 
 ```
-HD> cun hello
+敕 hundun 令 cun hello
   已存 → 因果 4f9f2cab   （1335831723）
 
-HD> cun hello
+敕 hundun 令 cun hello
   已存 → 因果 4f9f2cab   （1335831723）     ← 一模一样
 
-HD> pan
+敕 hundun 令 pan
   格式版本 1   世代 3
   对象数 2   追加指针 LBA 22   索引起 LBA 3
 
-HD> qu 4f9f2cab
+敕 hundun 令 qu 4f9f2cab
   「hello」
 ```
 
 **同一个内容存两次，因果一模一样，盘上只占一份。**
 
+### 提示符：敕 hundun 令
+
+```
+敕 hundun 令            大道
+勅 work    令           天道
+```
+
+**`敕` 不是「我是 root」，是「借大道的力办事」。**
+
+root 是「我拥有这台机器」；敕是「这台机器的大道借力给我这一次」。
+同一条命令，前缀是 `敕` 还是 `勅`，决定了它能调哪几位能力 —— 借来的力有边界，用完了就还回去。
+
+`令` 是收尾的符脚，像 `#`、`$` 一样是记号，不是装饰。
+
 然后关掉虚拟机、重新开机：
 
 ```
-HD> qu 4f9f2cab
+敕 hundun 令 qu 4f9f2cab
   「hello」
 ```
 
@@ -70,7 +84,7 @@ HD> qu 4f9f2cab
 还有一条命令看这台机器：
 
 ```
-HD> xin
+敕 hundun 令 xin
                             系统    混沌 HunDun OS
         ░░░░░               内核    自研引导器 Dao + HunDun 内核
       ░▒▒▒▒▒▒▒░             语言    六爻（关键字全拼音，危险操作要 wx{}）
