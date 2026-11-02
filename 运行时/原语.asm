@@ -79,35 +79,7 @@ _pr_halt:
 
     .globl _pr_call
 _pr_call:
-    push rax
-    mov dx, 0x3F8
-    mov al, 67
-    out dx, al
-    pop rax
     mov rax, [rsp + 40]
-    push rbx
-    push rcx
-    push rdx
-    push rax
-    mov rbx, rax
-    mov ecx, 16
-.Lhex:
-    rol rbx, 4
-    mov eax, ebx
-    and al, 15
-    add al, 48
-    cmp al, 58
-    jb .Lout
-    add al, 7
-.Lout:
-    mov dx, 0x3F8
-    out dx, al
-    dec ecx
-    jnz .Lhex
-    pop rax
-    pop rdx
-    pop rcx
-    pop rbx
     call rax
     ret
 
