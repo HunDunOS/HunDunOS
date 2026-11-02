@@ -11,8 +11,8 @@ _start:
     mov dx, 0x3F8
     mov al, 74
     out dx, al
-    mov rax, [0x7080]
-    mov rbx, rax
+    mov r15, 0x180040
+    mov rbx, r15
     mov ecx, 12
 .h1:
     rol rbx, 4
@@ -26,6 +26,7 @@ _start:
     out dx, al
     dec ecx
     jnz .h1
+    mov rax, r15
     test rax, rax
     jz .挂
     jmp rax
