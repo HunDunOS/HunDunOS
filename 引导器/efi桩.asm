@@ -3,15 +3,19 @@
     .globl efi_main
 
 FNV:
-    mov r12, 0xcbf29ce484222325
-    mov rdx, 0x100000001b3
+    mov r8, 0xcbf29ce484222325
+    mov r9, 0x100000001b3
+    test rcx, rcx
+    jz 2f
 1:
     movzx rax, byte ptr [rsi]
-    xor r12, rax
-    imul r12, rdx
+    xor r8, rax
+    imul r8, r9
     inc rsi
     dec rcx
     jnz 1b
+2:
+    mov rax, r8
     ret
 
 .macro 装轨 lba, 卦, 槽, 纹槽
@@ -33,8 +37,9 @@ FNV:
     lea rsi, [rip + 块缓冲]
     mov ecx, 56
     call FNV
+    mov r13, rax
     mov rax, [rip + 块缓冲 + 56]
-    cmp rax, r12
+    cmp rax, r13
     jne .道标错
 
     mov rax, [rip + 块缓冲 + 8]
@@ -87,16 +92,18 @@ FNV:
     lea rsi, [r14 + 64]
     mov rcx, r13
     call FNV
+    push rax
     lea rax, [r14 + 32]
     mov rax, [rax]
-    cmp rax, r12
+    pop rdx
+    cmp rax, rdx
     jne .指纹错
 
     mov qword ptr [\纹槽], 1
 
     lea rsi, [rip + 报_印语]
     call 报串
-    mov r8, r12
+    mov r8, rdx
     call 报十六
     lea rsi, [rip + 报_OK]
     call 报串
@@ -239,6 +246,68 @@ efi_main:
     mov dx, 0x3F8
     mov al, 49
     out dx, al
+
+    # ================= PCI 扫卡：找真网卡 =================
+    lea rsi, [rip + 报_PCI]
+    call 报串
+    xor r12, r12
+.扫总:
+    cmp r12, 4
+    jae .扫完
+    xor r13, r13
+.扫设:
+    cmp r13, 32
+    jae .下总
+    mov eax, 0x80000000
+    mov ecx, r12d
+    shl ecx, 16
+    or eax, ecx
+    mov ecx, r13d
+    shl ecx, 11
+    or eax, ecx
+    mov dx, 0xCF8
+    out dx, eax
+    mov dx, 0xCFC
+    in eax, dx
+    cmp eax, 0xFFFFFFFF
+    je .下设
+    mov r14d, eax
+    mov eax, 0x80000000
+    mov ecx, r12d
+    shl ecx, 16
+    or eax, ecx
+    mov ecx, r13d
+    shl ecx, 11
+    or eax, ecx
+    add eax, 8
+    mov dx, 0xCF8
+    out dx, eax
+    mov dx, 0xCFC
+    in eax, dx
+    shr eax, 24
+    cmp eax, 2
+    jne .下设
+    lea rsi, [rip + 报_网]
+    call 报串
+    mov r8d, r14d
+    and r8, 0xFFFF
+    call 报十六
+    mov al, 58
+    call 报字节
+    mov r8d, r14d
+    shr r8, 16
+    and r8, 0xFFFF
+    call 报十六
+    lea rsi, [rip + 报_换行]
+    call 报串
+.下设:
+    inc r13
+    jmp .扫设
+.下总:
+    inc r12
+    jmp .扫总
+.扫完:
+
     装轨 60000, 0, 阴入口, 0x7018
     mov dx, 0x3F8
     mov al, 50
@@ -328,6 +397,9 @@ efi_main:
     xor eax, eax
     ret
 
+.挂桌面:
+    jmp .挂桌面
+
 AP过程:
     mov rax, 1
     lock xadd qword ptr [0x7078], rax
@@ -379,6 +451,20 @@ AP过程:
     call qword ptr [rax + 248]
     pop rdx
     pop rcx
+    ret
+
+报字节:
+    push rax
+    push rcx
+    push rdx
+    mov [rip + 单字], al
+    mov byte ptr [rip + 单字 + 1], 0
+    mov rcx, [rbx + 64]
+    lea rdx, [rip + 单字]
+    call qword ptr [rcx + 8]
+    pop rdx
+    pop rcx
+    pop rax
     ret
 
 报十六:
@@ -443,6 +529,8 @@ BIO_GUID:
 报_厂:   .asciz "[ ok ] cpu  "
 报_无温: .asciz "[ -- ] temp 无传感器\r\n"
 报_温:   .asciz "[ ok ] temp TjMax-0x"
+报_PCI:  .asciz "[ .. ] PCI scan: find NIC\r\n"
+报_网:   .asciz "[ ok ] NIC  "
 报_核:   .asciz "[ ok ] cores 0x"
 报_启:   .asciz "  enabled 0x"
 报_AP:   .asciz "[ .. ] all AP on stage\r\n"
