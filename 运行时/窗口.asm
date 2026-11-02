@@ -10,6 +10,33 @@
     pop rax
     ret
 
+打十六:
+    push rax
+    push rcx
+    push rdx
+    push r8
+    mov ecx, 16
+.hx:
+    rol r8, 4
+    mov al, r8b
+    and al, 15
+    add al, 48
+    cmp al, 58
+    jb .hp
+    add al, 7
+.hp:
+    push rdx
+    mov dx, 0x3F8
+    out dx, al
+    pop rdx
+    dec ecx
+    jnz .hx
+    pop r8
+    pop rdx
+    pop rcx
+    pop rax
+    ret
+
     .globl _win_open
 _win_open:
     push rbx
@@ -72,6 +99,19 @@ _win_compose:
     mov [rsp + 16], rax
     mov rax, [rip + _win_h]
     mov [rsp + 24], rax
+
+    mov al, 83
+    call 打点
+    mov r8, [rsp + 0]
+    call 打十六
+    mov r8, [rsp + 8]
+    call 打十六
+    mov r8, [rsp + 16]
+    call 打十六
+    mov r8, [rsp + 24]
+    call 打十六
+    mov al, 10
+    call 打点
 
     mov r15, [rip + _efi_fb]
     mov r14, [rip + _efi_pitch]
@@ -146,45 +186,90 @@ _win_compose:
     .globl _win_demo
 _win_demo:
     push rbx
+    push r12
     sub rsp, 0x28
-    mov al, 'W'
-    call 打点
-    mov al, '1'
+
+    mov al, 68
     call 打点
 
-    push 0x00E0554A
-    push 100
-    push 100
+    call _gfx_screen
+    push 0x00202830
+    push 800
+    push 1280
     push 0
     push 0
+    call _gfx_fill
+    add rsp, 40
+
+    mov al, 66
+    call 打点
+
+    push 0x001E1E26
+    push 400
+    push 640
+    push 60
+    push 80
     call _win_open
     add rsp, 40
 
-    mov al, '2'
-    call 打点
-
     push 0x00262633
-    push 16
-    push 64
+    push 40
+    push 640
     push 0
     push 0
     call _gfx_fill
+    add rsp, 40
+
+    push 0x00E0554A
+    push 12
+    push 12
+    push 14
+    push 14
+    call _gfx_fill
+    add rsp, 40
+
+    push 0x00E6E6F0
+    push 12
+    push 40
+    push 0x181000
+    push 0
+    call _gfx_text
     add rsp, 40
 
     push 0x002D6CDF
-    push 20
-    push 24
-    push 28
-    push 8
+    push 48
+    push 180
+    push 240
+    push 40
     call _gfx_fill
     add rsp, 40
 
-    mov al, '3'
+    push 0x003FD0C0
+    push 48
+    push 180
+    push 240
+    push 100
+    call _gfx_fill
+    add rsp, 40
+
+    push 0x004A4A5A
+    push 2
+    push 560
+    push 320
+    push 40
+    call _gfx_fill
+    add rsp, 40
+
+    mov al, 67
     call 打点
+
     call _win_compose
-    mov al, '4'
+
+    mov al, 68
     call 打点
+
     add rsp, 0x28
+    pop r12
     pop rbx
     ret
 
@@ -202,4 +287,4 @@ _win_on:   .quad 0
     .section .bss
     .align 16
     .globl _win_面
-_win_面:   .space 0x40000
+_win_面:   .space 0x100000
