@@ -62,8 +62,10 @@ tt f6 01 02 -> u64  08
         tz b2 = 0
         ll  08
             lz b2 a4  08 ls  09
-            tz b3 = zt f3 01 01 b1 ht 1 02 , b2 02
-            sh zt f1 01 b1 , b2 02 , b3
+            tz b4 = 01 b1 ht 1 02
+            tz b3 = zt f3 01 b4 , b2 02
+            tz b5 = zt f1 01 b1 , b2 02
+            sh b5 , b3
             b2 = b2 ht 1
          09
         b1 = b1 ht 1
@@ -188,5 +190,62 @@ tt fe 01 02 -> u64  08
     sh 01 a8 ht 28 02 , 0x101014
     sh a6 , 0xE6E6F0
     sh a7 , 0x101014
+    zz 0
+ 09
+
+00 ========== 渲染：网格 → 帧缓冲 ==========
+00 a9 = 拼行缓冲，aa = 每行像素高，ab = 字符宽
+ts a9 = 0x30000
+ts gh = 0
+ts aa = 32
+ts ab = 16
+
+00 把第 gh 行拼成 C 串（40 字符 + 结尾 0）到 a9
+tt fk 01 02 -> u64  08
+    tz h1 = 0
+    tz h2 = 0
+    tz h3 = 0
+    h1 = 0
+    ll  08
+        lz h1 a4  08 ls  09
+        h2 = 01 a1 ht 01 01 gh hh a4 ht h1 02 hh 4 02 02
+        h3 = fh h2
+        h3 = 01 h3 hs 255 02
+        lz h3 0  08
+            h3 = 32
+         09
+        sh 01 a9 ht h1 02 , h3
+        h1 = 01 h1 ht 1 02
+     09
+    sh 01 a9 ht a4 02 , 0
+    zz 0
+ 09
+
+00 整屏上屏：逐行拼串 → 绘字
+tt fi 01 02 -> u64  08
+    tz j1 = 0
+    tz j2 = 0
+    j1 = 0
+    ll  08
+        lz j1 a5  08 ls  09
+        gh = j1
+        zt fk 01 02
+        j2 = 01 j1 hh aa 02
+        gh = 0
+        00 绘字( x=0, y=j2, 串=a9, 色=0xE6E6F0 )
+        绘字 01 0 , j2 , a9 , 0x00E6E6F0 02
+        j1 = 01 j1 ht 1 02
+     09
+    zz 0
+ 09
+
+00 光标：在第 gh 行第 gc 列画一个下划线
+tt fj 01 02 -> u64  08
+    tz k1 = 0
+    tz k2 = 0
+    tz k3 = 0
+    k1 = 01 fh a3 02 hh ab
+    k2 = 01 gh hh aa 02 ht 01 aa hz 2 02
+    绘块 01 k1 , k2 , ab , 2 , 0x00E6E6F0 02
     zz 0
  09
