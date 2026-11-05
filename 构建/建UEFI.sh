@@ -45,7 +45,7 @@ python3 "$ROOT/工具/打dao.py" "$B/yu1.dao" 63 0x200000 "$B/y1.raw"
 
 "$B/lyc" -c "$ROOT/引导器/hundun.ly" -o "$B/hd.s"
 "$AS" "$B/hd.s" -o "$B/hd.o"
-$LD -m elf_x86_64 -Ttext=0x180000 -o "$B/hd.elf" "$B/hd.o"
+$LD -m elf_x86_64 -Ttext=0x180040 -o "$B/hd.elf" "$B/hd.o"
 $OBJCOPY -O binary -j .text -j .rodata -j .data "$B/hd.elf" "$B/hd.raw"
 python3 "$ROOT/工具/打dao.py" "$B/hundun.dao" 21 0x180000 "$B/hd.raw"
 
@@ -64,6 +64,25 @@ mcopy -i "$OUT" "$B/Dao.efi" ::/EFI/BOOT/BOOTX64.EFI
 dd if="$B/yu0.dao" of="$OUT" bs=512 seek=60000 conv=notrunc status=none
 dd if="$B/yu1.dao" of="$OUT" bs=512 seek=60100 conv=notrunc status=none
 dd if="$B/hundun.dao" of="$OUT" bs=512 seek=60200 conv=notrunc status=none
+
+# ★ 模块区：编译好的六爻模块（.dao），内核按需装载
+#   布局：LBA 60400 起，每个模块 8 扇区（4KB），道标自带落址
+MODS_DIR="$ROOT/模块/成品"
+if [ -d "$MODS_DIR" ]; then
+    n=0
+    for m in "$MODS_DIR"/*.dao; do
+        [ -f "$m" ] || continue
+        dd if="$m" of="$OUT" bs=512 seek=$((60600 + n * 8)) conv=notrunc status=none
+        echo "  模块 $(basename "$m") → LBA $((60600 + n * 8))"
+        n=$((n + 1))
+    done
+fi
+
+# ★ 系统包：所有模块源码 + 编译器 + 界面，内核自己读
+if [ -f "$ROOT/系统.bao" ]; then
+    dd if="$ROOT/系统.bao" of="$OUT" bs=512 seek=60300 conv=notrunc status=none
+    echo "  系统包 → LBA 60300（$(stat -c%s "$ROOT/系统.bao") 字节）"
+fi
 
 echo
 echo "完成：$OUT  ($(stat -c%s "$OUT") 字节)"
