@@ -308,6 +308,87 @@ efi_main:
     jmp .扫总
 .扫完:
 
+
+    # ================= 找 NVMe：class 01 / sub 08 / progif 02 =================
+.找NVMe:
+    xor r12, r12
+.n扫总:
+    cmp r12, 4
+    jae .n扫完
+    xor r13, r13
+.n扫设:
+    cmp r13, 32
+    jae .n下总
+    mov eax, 0x80000000
+    mov ecx, r12d
+    shl ecx, 16
+    or eax, ecx
+    mov ecx, r13d
+    shl ecx, 11
+    or eax, ecx
+    mov dx, 0xCF8
+    out dx, eax
+    mov dx, 0xCFC
+    in eax, dx
+    cmp eax, 0xFFFFFFFF
+    je .n下设
+    mov r14d, eax
+    # 读 class（offset 8）低 24 位 = progif/subclass/class
+    mov eax, 0x80000000
+    mov ecx, r12d
+    shl ecx, 16
+    or eax, ecx
+    mov ecx, r13d
+    shl ecx, 11
+    or eax, ecx
+    add eax, 8
+    mov dx, 0xCF8
+    out dx, eax
+    mov dx, 0xCFC
+    in eax, dx
+    shr eax, 8
+    and eax, 0xFFFF00
+    cmp eax, 0x010802
+    jne .n下设
+    lea rsi, [rip + 报_NVMe]
+    call 报串
+    mov r8d, r14d
+    and r8, 0xFFFF
+    call 报十六
+    mov al, 58
+    call 报字节
+    mov r8d, r14d
+    shr r8, 16
+    and r8, 0xFFFF
+    call 报十六
+    # 读 BAR0（offset 0x10）
+    mov eax, 0x80000000
+    mov ecx, r12d
+    shl ecx, 16
+    or eax, ecx
+    mov ecx, r13d
+    shl ecx, 11
+    or eax, ecx
+    add eax, 0x10
+    mov dx, 0xCF8
+    out dx, eax
+    mov dx, 0xCFC
+    in eax, dx
+    and eax, 0xFFFFFFF0
+    mov r8d, eax
+    lea rsi, [rip + 报_MMIO]
+    call 报串
+    call 报十六
+    lea rsi, [rip + 报_换行]
+    call 报串
+.n下设:
+    inc r13
+    jmp .n扫设
+.n下总:
+    inc r12
+    jmp .n扫总
+.n扫完:
+
     装轨 60000, 0, 阴入口, 0x7018
     mov dx, 0x3F8
     mov al, 50
@@ -326,6 +407,14 @@ efi_main:
     out dx, al
     mov rax, [rip + 合入口]
     mov [0x7080], rax
+
+    装轨 60608, 44, 因时空, 0x7050
+    mov rax, [rip + 因时空]
+    mov [0x7090], rax
+
+    装轨 60600, 45, 回收入口, 0x7058
+    mov rax, [rip + 回收入口]
+    mov [0x70A0], rax
 
 
     lea rsi, [rip + 报_跳]
@@ -529,6 +618,8 @@ BIO_GUID:
 报_厂:   .asciz "[ ok ] cpu  "
 报_无温: .asciz "[ -- ] temp 无传感器\r\n"
 报_温:   .asciz "[ ok ] temp TjMax-0x"
+报_NVMe: .asciz "[ ok ] NVMe  "
+报_MMIO: .asciz "  BAR0=0x"
 报_PCI:  .asciz "[ .. ] PCI scan: find NIC\r\n"
 报_网:   .asciz "[ ok ] NIC  "
 报_核:   .asciz "[ ok ] cores 0x"
@@ -591,6 +682,8 @@ _sh_b:      .quad 0
 读字节:     .quad 0
 阳入口:     .quad 0
 合入口:     .quad 0
+因时空:     .quad 0
+回收入口:   .quad 0
 
     .section .bss
     .align 16
