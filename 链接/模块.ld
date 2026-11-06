@@ -8,9 +8,10 @@ ENTRY(_start)
 
 SECTIONS
 {
-    . = DEFINED(MOD_BASE) ? MOD_BASE : 0x400000;
+    . = 0x1C0040;
 
     .text : {
+        KEEP(*(.text.head))
         *(.text*)
     }
 
