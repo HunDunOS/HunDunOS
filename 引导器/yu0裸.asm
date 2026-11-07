@@ -11,7 +11,7 @@ _start:
     mov dx, 0x3F8
     mov al, 74
     out dx, al
-    mov r15, 0x420040
+    mov r15, 0x180040
     mov rbx, r15
     mov ecx, 12
 .h1:

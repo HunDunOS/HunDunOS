@@ -8,7 +8,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-    . = 0x1C0040;
+    . = MOD_BASE + 64;   /* 落址 + 64（道标长度），由 --defsym 给 */
 
     .text : {
         KEEP(*(.text.head))
