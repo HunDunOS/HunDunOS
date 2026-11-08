@@ -123,3 +123,78 @@ _cpuid_a:  .quad 0
 _cpuid_b:  .quad 0
 _cpuid_c:  .quad 0
 _cpuid_d:  .quad 0
+
+# ---------------------------------------------------------------------------
+#  运行时桩：数组越界（lyc 生成的代码会引用）
+#  真越界就停机 —— 不搞高级异常
+# ---------------------------------------------------------------------------
+    .globl _rt_oob
+_rt_oob:
+    cli
+    hlt
+    jmp _rt_oob
+
+# ---------------------------------------------------------------------------
+#  _rt_puts(串地址) —— 串口输出，0 结尾
+# ---------------------------------------------------------------------------
+    .globl _rt_puts
+_rt_puts:
+    push rsi
+    push rax
+    push rdx
+    mov rsi, [rsp + 32]
+1:
+    movzx eax, byte ptr [rsi]
+    test al, al
+    jz 2f
+    mov dx, 0x3F8
+    out dx, al
+    inc rsi
+    jmp 1b
+2:
+    pop rdx
+    pop rax
+    pop rsi
+    ret
+
+# ---------------------------------------------------------------------------
+#  _rt_puti(整数) —— 十进制输出
+# ---------------------------------------------------------------------------
+    .globl _rt_puti
+_rt_puti:
+    push rax
+    push rcx
+    push rdx
+    push r8
+    mov rax, [rsp + 40]
+    mov r8, 10
+    test rax, rax
+    jnz 1f
+    mov dx, 0x3F8
+    mov al, 48
+    out dx, al
+    jmp 3f
+1:
+    xor ecx, ecx
+2:
+    xor edx, edx
+    div r8
+    push rdx
+    inc ecx
+    test rax, rax
+    jnz 2b
+4:
+    pop rax
+    add al, 48
+    push rcx
+    mov dx, 0x3F8
+    out dx, al
+    pop rcx
+    dec ecx
+    jnz 4b
+3:
+    pop r8
+    pop rdx
+    pop rcx
+    pop rax
+    ret

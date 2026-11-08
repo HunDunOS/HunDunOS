@@ -63,14 +63,15 @@ FNV:
     call qword ptr [rax + 40]
     test rax, rax
     jz 88f
-    mov rcx, 0
-    mov rdx, 1
+    # ★ 指定地址分配失败 → 直接报出来，不回退
+    #   回退到任意地址会让模块代码的 rip 相对寻址全错（比崩溃更难查）
+    lea rsi, [rip + 报_装败]
+    call 报串
     mov r8, [rip + 申请页]
-    lea r9, [rip + 申请址]
-    mov rax, [rbx + 96]
-    call qword ptr [rax + 40]
-    test rax, rax
-    jnz .道标错
+    call 报十六
+    lea rsi, [rip + 报_换行]
+    call 报串
+    jmp .道标错
 88:
     mov r14, [rip + 申请址]
 
@@ -182,9 +183,11 @@ efi_main:
     call _gfx_screen
 
 
-    push rbx
-    call _win_demo
-    pop rbx
+    # ★ 临时停用：_win_demo 里 _gfx_fill 的参数栈偏移错 4 个 qword，
+    #    x 取到颜色 0x3FD0C0 → 写到 fb+4MB 外 → #PF。象测自己会画，先跳过它。
+    # push rbx
+    # call _win_demo
+    # pop rbx
 
     mov rax, [rip + _efi_h]
     xor rdx, rdx
@@ -390,6 +393,107 @@ efi_main:
 .n扫完:
 
     装轨 60000, 0, 阴入口, 0x7018
+
+    # ==================== 多核：真的把 AP 拉起来 ====================
+    # BootServices->LocateProtocol(MP_GUID, 0, &_mp)
+    # ★ 偏移 320，不是 152 —— 152 是 LocateHandleBuffer（5 参数，BIO 那段用的就是它）
+    lea rcx, [rip + MP_GUID]
+    xor rdx, rdx
+    lea r8, [rip + _mp]
+    mov rax, [rbx + 96]
+    call qword ptr [rax + 320]
+    mov r15, rax
+    lea rsi, [rip + 报_MP码]
+    call 报串
+    mov r8, r15
+    call 报十六
+    lea rsi, [rip + 报_换行]
+    call 报串
+    test r15, r15
+    jnz .无MP
+
+    mov rax, [rip + _mp]
+    mov r15, rax
+    lea rsi, [rip + 报_MPpt]
+    call 报串
+    mov r8, r15
+    call 报十六
+    lea rsi, [rip + 报_换行]
+    call 报串
+    test r15, r15
+    jz .无MP
+
+    # _mp->GetNumberOfProcessors(This, &核数, &已启)   [偏移 40]
+    mov rcx, r15
+    lea rdx, [rip + _核数]
+    lea r8, [rip + _已启]
+    call qword ptr [r15 + 40]
+    mov r14, rax
+    lea rsi, [rip + 报_MPgp]
+    call 报串
+    mov r8, r14
+    call 报十六
+    lea rsi, [rip + 报_换行]
+    call 报串
+    test r14, r14
+    jnz .无MP
+
+    # 报核数
+    lea rsi, [rip + 报_核]
+    call 报串
+    mov r8, [rip + _核数]
+    call 报十六
+    lea rsi, [rip + 报_启]
+    call 报串
+    mov r8, [rip + _已启]
+    call 报十六
+    lea rsi, [rip + 报_换行]
+    call 报串
+
+    # 放行标记清零、到位计数清零（AP 先用独立地址 0x7F00/0x7F08）
+    mov qword ptr [0x7F00], 0
+    mov qword ptr [0x7F08], 0
+
+    # _mp->StartupAllAPs(This, AP过程, SingleThread=1, 0, 0, 0, 0)  [偏移 216]
+    mov rcx, [rip + _mp]
+    lea rdx, [rip + AP过程]
+    mov r8, 1
+    xor r9, r9
+    mov qword ptr [rsp + 0x20], 0
+    mov qword ptr [rsp + 0x28], 0
+    mov qword ptr [rsp + 0x30], 0
+    mov rax, [rip + _mp]
+    call qword ptr [rax + 216]
+
+    # 等最多一小会儿，看有几个 AP 报到
+    mov r12, 0
+.等AP:
+    inc r12
+    cmp r12, 0x2000000
+    ja .AP到位
+    cmp qword ptr [0x7F00], 0
+    je .等AP
+
+.AP到位:
+    lea rsi, [rip + 报_AP]
+    call 报串
+    mov r8, [rip + 0x7F00]
+    test r8, r8
+    jz .AP零
+    call 报十六
+    lea rsi, [rip + 报_换行]
+    call 报串
+    # 放行：AP 各自去 hlt 等着领任务
+    mov qword ptr [0x7F08], 1
+    jmp .AP完
+
+.AP零:
+    lea rsi, [rip + 报_AP0]
+    call 报串
+
+.AP完:
+.无MP:
+    # ================================================================
     mov dx, 0x3F8
     mov al, 50
     out dx, al
@@ -415,6 +519,31 @@ efi_main:
     装轨 60600, 45, 回收入口, 0x7058
     mov rax, [rip + 回收入口]
     mov [0x70A0], rax
+
+    装轨 60624, 46, 象入口, 0x7060
+    mov rax, [rip + 象入口]
+    mov [0x70B0], rax
+
+    装轨 60632, 47, 历入口, 0x7068
+    mov rax, [rip + 历入口]
+    mov [0x70C0], rax
+
+    装轨 60640, 48, 数入口, 0x7070
+    mov rax, [rip + 数入口]
+    mov [0x70D0], rax
+
+    装轨 60648, 49, 数测入口, 0x7078
+
+    # 填XBP：帧缓冲四件套（模块都靠这个找屏幕）
+    mov eax, [rip + _efi_fb]
+    mov dword ptr [0x520], eax
+    mov eax, [rip + _efi_pitch]
+    mov dword ptr [0x524], eax
+    mov eax, [rip + _efi_w]
+    mov dword ptr [0x528], eax
+    mov eax, [rip + _efi_h]
+    mov dword ptr [0x52C], eax
+    mov qword ptr [0x500], 0x50425958
 
 
     lea rsi, [rip + 报_跳]
@@ -624,13 +753,20 @@ BIO_GUID:
 报_网:   .asciz "[ ok ] NIC  "
 报_核:   .asciz "[ ok ] cores 0x"
 报_启:   .asciz "  enabled 0x"
-报_AP:   .asciz "[ .. ] all AP on stage\r\n"
+报_MPh:   .asciz "[ .. ] MP handles ret=0x"
+报_MPn:   .asciz "  count=0x"
+报_MP码:  .asciz "[ .. ] MP locate ret=0x"
+报_MPpt:  .asciz "[ .. ] MP this=0x"
+报_MPgp:  .asciz "[ .. ] GetNumProc ret=0x"
+报_AP:   .asciz "[ ok ] AP on stage 0x"
+报_AP0:  .asciz "[ ok ] AP on stage 0 (single core)\r\n"
 报_AP1:  .asciz "AP "
 报_阴:   .asciz "[ ok ] yin  LBA 60000 hash 0x"
 报_阳:   .asciz "[ ok ] yang LBA 60100 hash 0x"
 报_印语: .asciz ""
 报_OK:   .asciz "\r\n"
 报_坏:   .asciz "\r\n[XBP] SEAL/HASH MISMATCH - refused\r\n"
+报_装败: .asciz "\r\n[XBP] AllocateAddress FAILED pages=0x"
 报_无:   .asciz "\r\n[XBP] no block device\r\n"
 报_跳:   .asciz "[ ok ] ExitBootServices\r\n[ .. ] ignite yu0\r\n"
 
@@ -651,9 +787,13 @@ _efi_scale: .quad 1
 单字:       .quad 0
 _li:        .quad 0
 _bio:       .quad 0
-_img:       .quad 0
     .globl _mp
 _mp:        .quad 0
+_MP数:      .quad 0
+_MP缓:      .quad 0
+_核数:      .quad 0
+_已启:      .quad 0
+_img:       .quad 0
     .globl _sys
 _sys:       .quad 0
 _cores:     .quad 0
@@ -684,6 +824,10 @@ _sh_b:      .quad 0
 合入口:     .quad 0
 因时空:     .quad 0
 回收入口:   .quad 0
+象入口:     .quad 0
+历入口:     .quad 0
+数入口:     .quad 0
+数测入口:   .quad 0
 
     .section .bss
     .align 16

@@ -24,9 +24,11 @@ echo "  用 $LYC_SRC"
 gcc -O2 -w -o "$B/lyc" "$LYC_SRC"
 
 echo "[2/5] 汇编 UEFI 桩与帧缓冲运行时"
-"$AS" "$ROOT/引导器/efi桩.asm" -o "$B/efi桩.o"
-"$AS" "$ROOT/运行时/efi图形.asm" -o "$B/efi图形.o"
+"$AS" "$ROOT/引导器/大道.asm" -o "$B/大道.o"
+"$AS" "$ROOT/运行时/墨.asm" -o "$B/墨.o"
 "$AS" "$ROOT/运行时/窗口.asm" -o "$B/窗口.o"
+"$AS" "$ROOT/运行时/绘字.asm" -o "$B/绘字.o"
+"$AS" "$ROOT/运行时/efi变量.asm" -o "$B/efi变量.o"
 
 python3 "$ROOT/工具/造字.py" "$B/字体.s" "$ROOT"/模块/*.ly "$ROOT/引导器/Dao.ly" > /dev/null
 "$AS" "$B/字体.s" -o "$B/字体.o"
@@ -50,14 +52,14 @@ python3 "$ROOT/工具/打dao.py" "$B/yu1.dao" 63 0x300000 "$B/y1.raw"
 "$AS" "$B/xiang.s" -o "$B/xiang.o"
 "$AS" "$B/shu.s" -o "$B/shu.o"
 $LD -m elf_x86_64 --defsym MOD_BASE=0x180000 -T "$ROOT/链接/模块.ld" -o "$B/hd.elf" \
-    "$B/hd.o" "$B/xiang.o" "$B/shu.o"
+    "$B/hd.o" "$B/xiang.o" "$B/shu.o" "$B/墨.o" "$B/efi变量.o" "$B/字体.o"
 $OBJCOPY -O binary -j .text -j .rodata -j .data "$B/hd.elf" "$B/hd.raw"
 python3 "$ROOT/工具/打dao.py" "$B/hundun.dao" 21 0x180000 "$B/hd.raw"
 
 echo "[4/5] 链 Dao.efi（PE32+ / EFI application）"
 $LD -m i386pep -subsystem 10 -e efi_main --image-base 0x10000000 \
     -o "$B/Dao.efi" \
-    "$B/efi桩.o" "$B/efi图形.o" "$B/窗口.o" "$B/字体.o"
+    "$B/大道.o" "$B/墨.o" "$B/窗口.o" "$B/字体.o"
 
 echo "[5/5] 焊 ESP 镜像（FAT32 只装门票，双轨是裸扇区）"
 rm -f "$OUT"

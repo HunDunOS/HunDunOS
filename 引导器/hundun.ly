@@ -95,12 +95,59 @@ tt sx 01 02 -> u64  08
 tt du 01 02 -> u64  08
     tz a1 = 0
     tz a2 = 0
+    tz a3 = 0
+    tz a4 = 0
+    00 优先读 8042 键盘（新世界），再退回串口（调试用）
     ll  08
-        a1 = fl 01 0x3FD 02
+        a1 = fl 01 0x64 02
         a2 = 01 a1 hs 1 02
-        lz a2 1  08 ls  09
+        lz a2 1  08
+            a3 = fl 01 0x60 02
+            a4 = 01 a3 hs 0x80 02
+            lz a4 0x80  08
+                00 松开键，丢掉继续等
+                a3 = 0
+             09
+            lh a4 0x80  08
+                lz a3 0x1C  08 zz 13  09
+                lz a3 0x0E  08 zz 8   09
+                lz a3 0x39  08 zz 32  09
+                lz a3 0x1E  08 zz 97  09
+                lz a3 0x30  08 zz 98  09
+                lz a3 0x2E  08 zz 99  09
+                lz a3 0x20  08 zz 100 09
+                lz a3 0x12  08 zz 101 09
+                lz a3 0x21  08 zz 102 09
+                lz a3 0x22  08 zz 103 09
+                lz a3 0x23  08 zz 104 09
+                lz a3 0x17  08 zz 105 09
+                lz a3 0x24  08 zz 106 09
+                lz a3 0x25  08 zz 107 09
+                lz a3 0x26  08 zz 108 09
+                lz a3 0x32  08 zz 109 09
+                lz a3 0x31  08 zz 110 09
+                lz a3 0x18  08 zz 111 09
+                lz a3 0x19  08 zz 112 09
+                lz a3 0x10  08 zz 113 09
+                lz a3 0x13  08 zz 114 09
+                lz a3 0x1F  08 zz 115 09
+                lz a3 0x14  08 zz 116 09
+                lz a3 0x16  08 zz 117 09
+                lz a3 0x2F  08 zz 118 09
+                lz a3 0x11  08 zz 119 09
+                lz a3 0x2D  08 zz 120 09
+                lz a3 0x15  08 zz 121 09
+                lz a3 0x2C  08 zz 122 09
+             09
+         09
+        00 顺便看串口（保留调试通道）
+        a4 = fl 01 0x3FD 02
+        a4 = 01 a4 hs 1 02
+        lz a4 1  08
+            zz fl 01 0x3F8 02
+         09
      09
-    zz fl 01 0x3F8 02
+    zz 0
  09
 
 00 读一行到 0x700，返回长度
@@ -217,12 +264,85 @@ tt 打空 01 02 -> u64  08
     zz 0
  09
 
+00 ========== 在帧缓冲上画字（调 运行时/绘字.asm 的 _xy_draw_text）==========
+ts q1 = 0
+ts q2 = 0
+ts sd1 = 0
+
+
+
+
 00 ========== 开机画面：面 → 圆 → 合成 ==========
 tt 画面 01 02 -> u64  08
+    tz s1 = 0
+    tz z1 = 0
+    tz z2 = 0
+    tz z3 = 0
     g0 = fh 0x0520
     屏基 = 01 g0 hs 0xFFFFFFFF 02
     g0 = fh 0x0524
     屏行 = 01 g0 hs 0xFFFFFFFF 02
+
+    00 ★ 最简验证：整屏刷成靛蓝（像素数按 XBP 里的宽高算，不写死）
+    g0 = fh 0x0528
+    g0 = 01 g0 hs 0xFFFFFFFF 02
+    z3 = fh 0x052C
+    z3 = 01 z3 hs 0xFFFFFFFF 02
+    z3 = 01 z3 hh g0 02
+    z3 = 01 z3 hh 4 02
+    z1 = 屏基
+    z2 = 0
+    ll  08
+        lz z2 z3  08 ls  09
+        sh z1 , 0x00303060
+        z1 = 01 z1 ht 4 02
+        z2 = 01 z2 ht 4 02
+     09
+    zs 04call _efi_从XBP
+04
+    g1 = 90
+    zt tu 01 02
+
+    00 ★ 用 运行时/绘字.asm 直接在帧缓冲上画字（不依赖 UEFI）
+    00 用六爻字符串（进 .rodata）+ 内联汇编画字
+    s1 = 03HunDunOS 03
+    s1 = 03H03
+    zs 04push 0xE8F0FF
+push rax
+push 200
+push 200
+call _gfx_text
+add esp, 16
+04
+    g1 = 87
+    zt tu 01 02
+
+    00 ★ 第二步：往「面」0xC00000 写 1000 个像素，再搬到屏幕左上角
+    z1 = 0xC00000
+    z2 = 0
+    ll  08
+        lz z2 400000  08 ls  09
+        sh z1 , 0x00FF8800
+        z1 = 01 z1 ht 4 02
+        z2 = 01 z2 ht 4 02
+     09
+    g1 = 89
+    zt tu 01 02
+
+    00 把面的前 640 像素搬到屏幕第一行
+    z1 = 0xC00000
+    z2 = 屏基
+    z3 = 0
+    ll  08
+        lz z3 640  08 ls  09
+        g0 = fh z1
+        sh z2 , g0
+        z1 = 01 z1 ht 4 02
+        z2 = 01 z2 ht 4 02
+        z3 = 01 z3 ht 1 02
+     09
+    g1 = 88
+    zt tu 01 02
 
     g1 = 97
     zt tu 01 02
@@ -306,6 +426,11 @@ tt 读数 01 02 -> u64  08
     zz 0
  09
 
+00 画字用的常量串（放 .rodata 段末，由 zs 引用）
+tt 占位 01 02 -> u64  08
+    zz 0
+ 09
+
 00 主循环
 tt zx 01 02 -> u64  08
     sl 01 0x3F8 02 , 88
@@ -313,6 +438,9 @@ tt zx 01 02 -> u64  08
     tz n1 = 0
     tz r9 = 0
     tz s9 = 0
+    tz d1 = 0
+    tz d2 = 0
+    tz d3 = 0
     s5 = 03CL hundun LL 03
     g1 = 10
     zt tu 01 02
