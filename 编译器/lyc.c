@@ -13,7 +13,7 @@
  *  语言要点
  *    关键字（拼音缩写）: hs 函数 / fh 返回 / bl 不可变绑定 / kb 可变绑定
  *                        rg 如果 / bz 不然 / xh 无限循环 / dy 条件循环
- *                        tc 跳出 / jx 继续 / qj 全局
+ *                       
  *                        wy 位与 / wh 位或 / yh 异或（中缀关键字运算符）
  *    类型: u8 u16 u32 u64 i8 i16 i32 i64 z ；指针 *类型
  *    声明: 名字 [ '[' 长度 ']' ] [ ':' 类型 ] [ '=' 初值 ]
@@ -51,7 +51,7 @@ static const char *KEYWORDS[] = { "tt","th","tz","tl","tf","ts","tr","td",
                                   "st","sz","sh","sl","sf","ss","sr","sd",
                                   "rt","rz","rh","rl","rf","rs","rr","rd",
                                   "dt","dz","dh","dl","df","ds","dr","dd",
-                                  "qj","wx","true","false", NULL };
+                                  "wx", NULL };
 static const char *OPKW[]     = { "hs","hr","hd","ht","hz","hh","hl","hf","dh","dl", NULL };
 /* ★ 五行 = 5×5 = 25 个类型名（大写两字母，和六爻的小写正好分开）
      单字：金J 木M 水S 火H 土T           —— 五行本身
@@ -76,10 +76,11 @@ static int is_idc(int c) {
 
 static char *还原数字标点(const char *src) {
     int len = (int)strlen(src);
-    char *out = malloc(len * 2 + 16);
+    char *out = malloc(len * 4 + 64);
     int o = 0;
     const char *p = src;
     int 在串里 = 0;
+    int 串开 = 0;        /* 当前字符串开头的定界符（3=双引号、4=顿号），配对用 */
     int 末是标识符 = 0;  /* 输出的最后一个字符是否是标识符字符（字母/数字/下划线/中文） */
     while (*p) {
         /* 00 注释：跳过到行尾 */
@@ -88,33 +89,27 @@ static char *还原数字标点(const char *src) {
             末是标识符 = 0;
             continue;
         }
-        /* 01-09 标点编码：04/07只在串里识别；其他串外且非标识符后识别 */
+        /* 01-09 标点编码：串内只有 03 能收尾，07 只在串内认；04=顿号是普通分隔符 */
         int code = (p[0] == '0' && p[1] >= '1' && p[1] <= '9') ? (p[1] - '0') : 0;
         int 允许 = 0;
-        if (code == 4 && 在串里) 允许 = 1;
-        else if (code == 7 && 在串里) 允许 = 1;
-        else if (code != 4 && code != 7 && !末是标识符) 允许 = 1;
+        if (在串里 && (code == 3 || code == 7)) 允许 = 1;
+        else if (code != 7 && !末是标识符) 允许 = 1;
         if (code && 允许) {
             p += 2;
-            if (code != 3 && code != 7 && *p && *p != ' ' && *p != '\t' && *p != '\n' && *p != '\r') {
+            if (code != 3 && code != 4 && code != 7 && *p && *p != ' ' && *p != '\t' && *p != '\n' && *p != '\r') {
                 die("0%d编码后必须跟空格", code);
             }
             if (code == 3) {
-                out[o++] = '"';                        /* 03 总是输出双引号 */
-                if (!在串里) { 在串里 = 1; }           /* 不在串里 → 进入串模式 */
-                末是标识符 = 0;
-                continue;
-            }
-            if (code == 4) {
-                if (!在串里) { die("语法错误：04 出现在字符串外，第 %d 行", srcline); }
-                out[o++] = '\'';                        /* 04 输出单引号 */
-                在串里 = 0;                             /* 退出串模式 */
+                out[o++] = '"';                        /* 03 = 双引号 */
+                if (在串里) { if (串开 == 3) 在串里 = 0; }   /* 03 配 03 收 */
+                else { 在串里 = 1; 串开 = 3; }              /* 03 开 */
                 末是标识符 = 0;
                 continue;
             }
             switch (code) {
                 case 1: out[o++] = '('; break;
                 case 2: out[o++] = ')'; break;
+                case 4: out[o++] = (char)0xE3; out[o++] = (char)0x80; out[o++] = (char)0x81; break;  /* 04 = 顿号，单个分隔 */
                 case 5: out[o++] = ';'; break;
                 case 6: out[o++] = '/'; break;
                 case 7: out[o++] = '\\'; break;
@@ -156,15 +151,20 @@ static char *还原数字标点(const char *src) {
         if (*p == '#') { while (*p && *p != '\n') p++; continue; }   /* # 兼容保留 */
         if (ntoks + 2 >= cap) { cap *= 2; toks = xrealloc(toks, cap * sizeof(Tok)); }
 
+        /* 定界符：只有 03 = "（双引号）成对，顿号、是普通分隔符 */
         if (*p == '"') {
-            p++; char buf[8192]; int n = 0;
-            while (*p && *p != '\'') {
+            int 长 = 1;
+            char buf[8192]; int n = 0;
+            p += 长;
+            while (*p) {
+                if (*p == '"') break;
                 if (n >= (int)sizeof(buf) - 8)
                     die("第 %d 行：字符串字面量太长（上限 %d 字节）", srcline, (int)sizeof(buf) - 8);
                 buf[n++] = *p++;
             }
-            if (*p != '\'') die("第 %d 行：字符串没有闭合", srcline);
-            p++; buf[n] = 0;
+            if (!*p) die("第 %d 行：字符串没有闭合（\" 开头要用 \" 收尾）", srcline);
+            p += 长;
+            buf[n] = 0;
             char *s = xmalloc(n + 1); memcpy(s, buf, n + 1);
             toks[ntoks++] = (Tok){TK_STR, 0, s, srcline};
             continue;
@@ -537,10 +537,6 @@ static void primary(void) {
     /* dz 空值/null → 就是0 */
     if (is_kw("dz")) { em("mov rax, 0"); adv(); return; }
 
-    /* 布尔字面量 true=1 false=0 */
-    if (is_kw("true")) { em("mov rax, 1"); adv(); return; }
-    if (is_kw("false")) { em("mov rax, 0"); adv(); return; }
-
     if (t->k == TK_STR) {
         if (nstr >= 1024) die("字符串太多");
         strtab[nstr++] = t->s; adv();
@@ -819,11 +815,11 @@ static void stmt(void) {
     }
 
     /* ---- 全局声明（仅顶层） ---- */
-    if (is_kw("qj") || (is_kw("tz") && !in_function) || (is_kw("ts") && !in_function) || (is_kw("tf") && !in_function)) {
+    if ((is_kw("tz") && !in_function) || (is_kw("ts") && !in_function) || (is_kw("tf") && !in_function)) {
         adv();
         int ln = cur()->line;
         if (in_function) die("第 %d 行：全局声明只能出现在顶层", ln);
-        if (cur()->k != TK_ID) die("第 %d 行：qj 后面必须是名字", ln);
+        if (cur()->k != TK_ID) die("第 %d 行：ts 后面必须是名字", ln);
         char *name = cur()->s; adv();
         int size = 8, count = 1, sidx = -1;
         parse_decl_tail(name, &size, &count, &sidx);
@@ -1027,7 +1023,39 @@ static void stmt(void) {
     /* ---- zs 内联汇编 ---- */
     if (is_kw("zs")) {
         adv();
-        if (cur()->k != TK_STR) die("第 %d 行：zs 后面必须是汇编字符串", cur()->line);
+        /* ★ 规范写法：zs 08  ... 09   块内原文照抄进汇编
+           兼容老写法：zs "字符串"                                       */
+        if (cur()->k == TK_P && !strcmp(cur()->s, "{")) {
+            adv();  /* 吃掉 08 */
+            int 层 = 1;
+            /* 原样吐出 token，靠 token 里记的行号还原换行 */
+            int 上 = cur()->line;
+            if (上 > 1) { /* 块开在同一行后面不用换行 */ }
+            /* 一直到匹配的 } */
+            while (cur()->k != TK_EOF) {
+                if (cur()->k == TK_P && !strcmp(cur()->s, "{")) 层++;
+                else if (cur()->k == TK_P && !strcmp(cur()->s, "}")) {
+                    层--;
+                    if (层 == 0) { adv(); break; }
+                    fputc('}', out); adv(); continue;
+                }
+                if (cur()->k == TK_NL) { fputc('\n', out); }
+                else if (cur()->k == TK_STR) {
+                    /* 汇编里出现字符串，原样带引号 */
+                    fprintf(out, "\"%s\"", cur()->s);
+                } else if (cur()->k == TK_NUM) {
+                    fprintf(out, "%ld", cur()->v);
+                } else {
+                    fprintf(out, "%s", cur()->s);
+                }
+                /* token 之间补空格，避免粘连 */
+                if (cur()->k != TK_NL) fputc(' ', out);
+                adv();
+            }
+            fputc('\n', out);
+            return;
+        }
+        if (cur()->k != TK_STR) die("第 %d 行：zs 后面要么是 08…09 块，要么是字符串", cur()->line);
         em("%s", cur()->s);
         adv();
         return;
@@ -1432,7 +1460,7 @@ static void parse_fn(void) {
         return;
     }
 
-    if (!is_kw("tt") && !is_kw("qj") && !is_kw("tz") && !is_kw("ts") && !is_kw("tf")) die("第 %d 行：顶层只能是 tt 函数定义或 qj/tz/tf/tr 全局声明", cur()->line);
+    if (!is_kw("tt") && !is_kw("tz") && !is_kw("ts") && !is_kw("tf")) die("第 %d 行：顶层只能是 tt 函数定义或 ts/tf/tr 全局声明", cur()->line);
     adv();
     if (cur()->k != TK_ID) die("第 %d 行：hs 后面必须是函数名", cur()->line);
     char *name = cur()->s; adv();
@@ -1952,7 +1980,7 @@ int main(int argc, char **argv) {
     if (!rt_mode) {
         tpos = 0; skip_nl();
         while (cur()->k != TK_EOF) {
-            if (is_kw("qj") || is_kw("tz") || is_kw("ts") || is_kw("tf") || is_kw("tl")) { stmt(); skip_nl(); continue; }
+            if (is_kw("tz") || is_kw("ts") || is_kw("tf") || is_kw("tl")) { stmt(); skip_nl(); continue; }
             parse_fn(); skip_nl();
         }
         if (!nfunc) die("源文件里没有任何函数");
