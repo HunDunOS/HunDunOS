@@ -20,10 +20,10 @@
   Arch：    sudo pacman -S clang binutils python qemu-system-x86
   Debian：  sudo apt install clang binutils python3 qemu-system-x86
   Fedora：  sudo dnf install clang binutils python3 qemu-system-x86
-  Alpine：  apk add clang binutils python3 qemu-system-i386
+  Alpine：  apk add clang binutils python3 qemu-system-x86_64
 
   ★ 如果你的电脑是 **x86_64**，到这里就够了 ——
-    系统的 as/ld 自带 i386 支持（`as --32` / `ld -m elf_i386`），
+    系统的 as/ld 自带 x86-64 支持（`as --64` / `ld -m elf_x86_64`），
     **不需要任何交叉工具链**。构建脚本会自动探测。
 
   ★ 如果不是 x86（比如 ARM 的笔记本、树莓派），还要装交叉工具链：
@@ -41,7 +41,7 @@
       混沌盘.img          8388608 字节
   然后：
 
-      qemu-system-i386 -cdrom 混沌桌面.iso -boot d -m 256 -vga std \
+      qemu-system-x86_64 -cdrom 混沌桌面.iso -boot d -m 256 -vga std \
         -drive file=混沌盘.img,format=raw,if=ide \
         -netdev user,id=n0 -device ne2k_pci,netdev=n0
 
@@ -66,12 +66,12 @@
       内核一变地址就变，旧包里的调用全指向错地方。
           sh 构建/建包.sh      ← 编辑器包 → 写盘 LBA 8000
           sh 构建/建工具.sh     ← C 工具包 → 写盘 LBA 8100
-          sh 构建/建插件.sh 插件/打印.xy dayin 8200
+          sh 构建/建插件.sh 插件/打印.ly dayin 8200
 
-▍用法 C：想学新语（写 .xy → 编 → 跑）
-  新语的源码是 .xy 文件。学习路径看《新语怎么学.txt》。
+▍用法 C：想学六爻（写 .ly → 编 → 跑）
+  六爻的源码是 .ly 文件。学习路径看《六爻怎么学.txt》。
 
-  最小的循环：在 模块/壳.xy 的 执行() 里加一条命令，然后构建 + 跑。
+  最小的循环：在 模块/壳.ly 的 执行() 里加一条命令，然后构建 + 跑。
   例如加一条 niha：
 
       rg 命令是("niha") == 1 {
@@ -124,14 +124,14 @@
   · 能开两个窗口：一个跑 QEMU，一个 `tail -f 输出目录/s.log` 看串口
     ★ 这是我最推荐的姿势 —— 边点边看日志，出问题一眼看到
   · 编辑器和终端并排，改一行 → 构建 → 跑 → 看日志，循环很快
-  · `qemu-system-i386 ... -display gtk` 能直接在你桌面上开窗口点
+  · `qemu-system-x86_64 ... -display gtk` 能直接在你桌面上开窗口点
 
   推荐的三个终端：
       # 1. 构建（改完代码在这里跑）
       sh 构建/构建.sh "" 混沌桌面.iso
 
       # 2. 跑 + 看串口（跑起来之后不要关）
-      qemu-system-i386 -cdrom 混沌桌面.iso -boot d -m 256 -vga std \
+      qemu-system-x86_64 -cdrom 混沌桌面.iso -boot d -m 256 -vga std \
         -drive file=混沌盘.img,format=raw,if=ide \
         -netdev user,id=n0 -device ne2k_pci,netdev=n0 \
         -serial file:/tmp/s.log -display gtk &
@@ -143,12 +143,12 @@
   五、电脑上会遇到的问题（照着查）
 ────────────────────────────────────────────────────────────────
 
-  ▍构建报 "unrecognised emulation mode: elf_i386"
-    → 你的 ld 不支持 i386。装 binutils（x86_64 机器的 binutils 自带）
+  ▍构建报 "unrecognised emulation mode: elf_x86_64"
+    → 你的 ld 不支持 x86-64。装 binutils（x86_64 机器的 binutils 自带）
       或者在非 x86 机器上装交叉 binutils（看第一节）
 
   ▍构建报 "as: unrecognized option '--32'"
-    → 同上。非 x86 机器的 as 不带 i386 后端
+    → 同上。非 x86 机器的 as 不带 x86-64 后端
 
   ▍QEMU 报 "-drive: warning: short-form boolean option"
     → 那只是警告，不影响。用 `-drive file=xxx.img,format=raw,if=ide` 就没了
@@ -175,15 +175,15 @@
       构建/建工具.sh           C 工具包
       构建/建插件.sh           插件包
       工具/测试/跑桌面.py       自动测
-      模块/*.xy               内核（新语写的）
+      模块/*.ly               内核（六爻写的）
       运行时/*.asm            手写汇编（别碰）
       编译器/xyc.c            编译器（C 写的）
-      文档/                   设计文档 + 新语速查 + 新语怎么学
-      插件/打印.xy             示例插件（"手"）
+      文档/                   设计文档 + 六爻速查 + 六爻怎么学
+      插件/打印.ly             示例插件（"手"）
 
   另外还给了你两份文档：
       接手指南.txt       构建 / 排错 / 代码地图 / 环境坑
-      新语怎么学.txt     四个台阶 + 练习 + 必踩的坑
+      六爻怎么学.txt     四个台阶 + 练习 + 必踩的坑
       混沌-现状全记录.txt 全部现状（12 节，66KB，前因后果都在这）
 
 ════════════════════════════════════════════════════════════════════

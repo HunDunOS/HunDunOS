@@ -1,0 +1,851 @@
+00 nic
+
+ts 卡基址 = 0
+ts 卡在 = 0
+ts 卡MAC[6] = 0
+
+ts frame缓[1600] = 0
+ts frame址 = 0
+ts frame长 = 0
+ts 收缓[1600] = 0
+ts 收址 = 0
+ts 卡醒 = 0
+ts 目标IP[4] = 0
+ts 网关MAC[6] = 0
+ts 回显序 = 0
+
+00 卡write / 卡read
+tt 卡write 01 reg  val 02 -> u64  08
+    sl 01 01 卡基址 ht reg 02  val 02
+    zz 0
+ 09
+
+tt 卡read 01 reg 02 -> u64  08
+    zz dr 01 01 卡基址 ht reg 02 02
+ 09
+
+tt nic_找 01 02 -> u64  08
+    卡在 = 0
+    tz bus = 0
+    ll  08
+        lz bus 8  08 ls  09
+        tz dev = 0
+        ll  08
+            lz dev 32  08 ls  09
+            tz id = zt machine_PCIread 01 bus  dev  0  0 02
+            lh id 0xFFFFFFFF  08
+                lz 01 01 id hs 0xFFFF 02 02 0x10EC  08
+                    lz 01 01 id hl 65536 02 02 0x8029  08
+                        tz 条 = zt machine_PCIread 01 bus  dev  0  16 02
+                        lz 01 条 hs 1 02 1  08
+                            卡基址 = 01 条 hs 0xFFFC 02
+                            卡在 = 1
+                            zz 1
+                         09
+                     09
+                 09
+             09
+            dev = dev ht 1
+         09
+        bus = bus ht 1
+     09
+    zz 0
+ 09
+
+tt nic_复位 01 02 -> u64  08
+    sl 01 01 卡基址 ht 0x1F 02  0 02
+    tz i = 0
+    tz 空 = 0
+    ll  08
+        lz i 2000  08 ls  09
+        空 = 01 空 ht 1 02
+        i = i ht 1
+     09
+    zz 1
+ 09
+
+tt nic_readPROM 01 02 -> u64  08
+    tz i = 0
+    ll  08
+        lz i 32  08 ls  09
+        sh 01 收址 ht i 02 , 0
+        i = i ht 1
+     09
+    zt 卡write 01 0x08  0x00 02
+    zt 卡write 01 0x09  0x00 02
+    zt 卡write 01 0x0A  32 02
+    zt 卡write 01 0x0B  0x00 02
+    zt 卡write 01 0x00  0x0A 02
+    i = 0
+    ll  08
+        lz i 16  08 ls  09
+        tz w = drz 01 01 卡基址 ht 0x10 02 02
+        sh 01 收址 ht 01 i ht 2 02 02 , 01 w hs 255 02
+        sh 01 收址 ht 01 i ht 2 ht 1 02 02 , 01 01 w hl 256 02 hs 255 02
+        i = i ht 1
+     09
+    zt 卡write 01 0x00  0x22 02
+    i = 0
+    ll  08
+        lz i 6  08 ls  09
+        tz v = fh 01 收址 ht 01 i ht 2 02 02
+        sh 01 卡MAC ht i 02 , v
+        i = i ht 1
+     09
+    zz 1
+ 09
+
+tt nic_init 01 02 -> u64  08
+    zt 卡write 01 0x0F  0x00 02
+    zt 卡write 01 0x0E  0x49 02
+    zt 卡write 01 0x0C  0x00 02
+    zt 卡write 01 0x0D  0x02 02
+    zt 卡write 01 0x08  0x00 02
+    zt 卡write 01 0x09  0x00 02
+    zt 卡write 01 0x0A  0x00 02
+    zt 卡write 01 0x0B  0x00 02
+    zt 卡write 01 0x00  0x21 02
+
+    zt 卡write 01 0x01  0x46 02
+    zt 卡write 01 0x02  0x80 02
+    zt 卡write 01 0x03  0x45 02
+    zt 卡write 01 0x07  0xFF 02
+    zt 卡write 01 0x00  0x22 02
+
+    zt nic_readPROM 01 02
+
+    zt 卡write 01 0x00  0x61 02
+    tz i = 0
+    ll  08
+        lz i 6  08 ls  09
+        zt 卡write 01 01 0x01 ht i 02  01 卡MAC ht i 02 02
+        i = i ht 1
+     09
+    zt 卡write 01 0x07  0x46 02
+    zt 卡write 01 0x00  0x22 02
+
+    zt 卡write 01 0x0C  0x04 02
+    zt 卡write 01 0x0D  0x00 02
+    zt 卡write 01 0x0F  0x00 02
+    zt 卡write 01 0x07  0xFF 02
+    zt 卡write 01 0x00  0x22 02
+    zz 1
+ 09
+
+tt nic_自检 01 02 -> u64  08
+    pss 01 0x8FA6C8 02
+    pc 01 03  [nic] 扫 PCI 找 NE2000…03 02
+    ph 01 02
+    lz zt nic_找 01 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 没找到（QEMU 要加 -device ne2k_pci）03 02
+        ph 01 02
+        zz 0
+     09
+    pss 01 0x37C46A 02
+    pc 01 03  [nic] 找到了，I/O 基址 0x03 02
+    打十六 01 卡基址 02
+    ph 01 02
+
+    lz zt nic_复位 01 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 复位超hour03 02
+        ph 01 02
+        zz 0
+     09
+    pc 01 03  [nic] 复位完成，ISR=0x03 02
+    打十六 01 zt 卡read 01 0x07 02 02
+    ph 01 02
+
+    zt nic_init 01 02
+    pc 01 03  [nic] MAC = 03 02
+    tz i = 0
+    ll  08
+        lz i 6  08 ls  09
+        tz v = 01 卡MAC ht i 02
+        tz 高 = 01 v hl 16 02
+        tz 低 = 01 v hf 16 02
+        lh 高 10  08
+            屏出 01 01 48 ht 高 02 02
+         09
+        lz 高 10  08
+            屏出 01 01 87 ht 高 02 02
+         09
+        lh 低 10  08
+            屏出 01 01 48 ht 低 02 02
+         09
+        lz 低 10  08
+            屏出 01 01 87 ht 低 02 02
+         09
+        lh i 5  08
+            屏出 01 58 02
+         09
+        i = i ht 1
+     09
+    ph 01 02
+    frame址 = dz 01 frame缓 02
+    收址 = dz 01 收缓 02
+    卡醒 = 1
+    zz 1
+ 09
+
+tt nic_发frame 01 址  长 02 -> u64  08
+    lz 卡在 0  08
+        zz 0
+     09
+    tz 实长 = 长
+    lh 实长 60  08
+        实长 = 60
+     09
+    lh 实长 1514  08
+        zz 0
+     09
+    tz 双 = 01 01 实长 ht 1 02 hl 2 02
+    tz 字 = 01 双 ht 2 02
+
+    zt 卡write 01 0x00  0x22 02
+    zt 卡write 01 0x0F  0x00 02
+    zt 卡write 01 0x08  0x00 02
+    zt 卡write 01 0x09  0x40 02
+    zt 卡write 01 0x0A  01 字 hs 255 02 02
+    zt 卡write 01 0x0B  01 01 字 hl 256 02 hs 255 02 02
+    zt 卡write 01 0x00  0x12 02
+
+    tz i = 0
+    ll  08
+        lz i 双  08 ls  09
+        tz a = fh 01 址 ht 01 i ht 2 02 02
+        tz b = 0
+        lh 01 01 i ht 2 02 ht 1 02 实长  08
+            b = fh 01 址 ht 01 01 i ht 2 02 ht 1 02 02
+         09
+        dcz 01 01 卡基址 ht 0x10 02  01 01 a ht b ht 256 02 02 02
+        i = i ht 1
+     09
+    zt 卡write 01 0x00  0x22 02
+
+    zt 卡write 01 0x04  0x40 02
+    zt 卡write 01 0x05  01 字 hs 255 02 02
+    zt 卡write 01 0x06  01 01 字 hl 256 02 hs 255 02 02
+    zt 卡write 01 0x00  0x26 02
+
+    tz n = 0
+    ll  08
+        lz n 2000000  08 ls  09
+        tz s = zt 卡read 01 0x04 02
+        lz 01 s hs 1 02 1  08
+            zt 卡write 01 0x07  0x0A 02
+            zt 卡write 01 0x00  0x22 02
+            frame长 = 实长
+            zz 1
+         09
+        n = n ht 1
+     09
+    zt 卡write 01 0x00  0x22 02
+    zz 0
+ 09
+
+tt nic_收frame 01 出址 02 -> u64  08
+    lz 卡在 0  08
+        zz 0
+     09
+    tz isr = zt 卡read 01 0x07 02
+    lz 01 isr hs 1 02 0  08
+        zz 0
+     09
+    tz bnry = zt 卡read 01 0x03 02
+    tz readpage = 01 bnry ht 1 02
+    lh readpage 0x80  08
+        readpage = 0x46
+     09
+
+    zt 卡write 01 0x08  0x00 02
+    zt 卡write 01 0x09  readpage 02
+    zt 卡write 01 0x0A  4 02
+    zt 卡write 01 0x0B  0 02
+    zt 卡write 01 0x00  0x0A 02
+    tz w0 = drz 01 01 卡基址 ht 0x10 02 02
+    tz w1 = drz 01 01 卡基址 ht 0x10 02 02
+    zt 卡write 01 0x00  0x22 02
+
+    tz 次page = 01 01 w0 hl 256 02 hs 255 02
+    tz 全长 = 01 w1 hs 0xFFFF 02
+    lh 全长 18  08
+        zz 0
+     09
+    lh 全长 1518  08
+        zz 0
+     09
+    全长 = 01 全长 hz 4 02
+    lh 次page 0x46  08
+        zz 0
+     09
+    lh 次page 0x80  08
+        zz 0
+     09
+
+    zt 卡write 01 0x08  4 02
+    zt 卡write 01 0x09  readpage 02
+    tz 双 = 01 01 全长 ht 1 02 hl 2 02
+    zt 卡write 01 0x0A  01 01 双 ht 2 02 hs 255 02 02
+    zt 卡write 01 0x0B  01 01 01 双 ht 2 02 hl 256 02 hs 255 02 02
+    zt 卡write 01 0x00  0x0A 02
+    tz i = 0
+    ll  08
+        lz i 双  08 ls  09
+        tz w = drz 01 01 卡基址 ht 0x10 02 02
+        sh 01 出址 ht 01 i ht 2 02 02 , 01 w hs 255 02
+        lh 01 01 i ht 2 02 ht 1 02 全长  08
+            sh 01 出址 ht 01 i ht 2 ht 1 02 02 , 01 01 w hl 256 02 hs 255 02
+         09
+        i = i ht 1
+     09
+    zt 卡write 01 0x00  0x22 02
+    zt 卡write 01 0x07  0x01 02
+    zt 卡write 01 0x03  01 次page hz 1 02 02
+    zt 卡write 01 0x00  0x22 02
+    frame长 = 全长
+    zz 全长
+ 09
+
+tt nic_自环试 01 02 -> u64  08
+    pss 01 0x8FA6C8 02
+    pc 01 03  [nic] 自环试：TCR 置环回，发 60 字节再收回来…03 02
+    ph 01 02
+    zt 卡write 01 0x0D  0x02 02
+    zt 卡write 01 0x0C  0x0D 02
+    zt 卡write 01 0x00  0x22 02
+
+    tz i = 0
+    ll  08
+        lz i 6  08 ls  09
+        sh 01 frame址 ht i 02 , 0xFF
+        i = i ht 1
+     09
+    ll  08
+        lz i 60  08 ls  09
+        sh 01 frame址 ht i 02 , 01 i hs 255 02
+        i = i ht 1
+     09
+
+    lz zt nic_发frame 01 frame址  60 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 发fail（ISR 一直没置 PTX）03 02
+        ph 01 02
+        pc 01 03    TSR=0x03 02
+        打十六 01 zt 卡read 01 0x04 02 02
+        pc 01 03  ISR=0x03 02
+        打十六 01 zt 卡read 01 0x07 02 02
+        pc 01 03  BNRY=0x03 02
+        打十六 01 zt 卡read 01 0x03 02 02
+        pc 01 03  RSR=0x03 02
+        打十六 01 zt 卡read 01 0x0C 02 02
+        ph 01 02
+        zt 卡write 01 0x0D  0x00 02
+        zz 0
+     09
+    pss 01 0x37C46A 02
+    pc 01 03  [nic] 发出去了03 02
+    ph 01 02
+
+    tz n = 0
+    tz 得 = 0
+    ll  08
+        lz n 200000  08 ls  09
+        tz l = zt nic_收frame 01 收址 02
+        lh l 0  08
+            得 = l
+            ls
+         09
+        n = n ht 1
+     09
+    lz 得 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 没收到（自环没成）03 02
+        ph 01 02
+        zt 卡write 01 0x0D  0x00 02
+        zz 0
+     09
+    pss 01 0x9AC4FF 02
+    pc 01 03  [nic] 收到 03 02
+    ps 01 得 02
+    pc 01 03  字节03 02
+    ph 01 02
+
+    tz 同 = 1
+    tz j = 0
+    ll  08
+        lz j 60  08 ls  09
+        tz a = fh 01 frame址 ht j 02
+        tz b = fh 01 收址 ht j 02
+        lh a b  08
+            同 = 0
+         09
+        j = j ht 1
+     09
+    lz 同 1  08
+        pss 01 0x37C46A 02
+        pc 01 03  [nic] 逐字节一致 ✓ —— 收发两个方向都通了03 02
+        ph 01 02
+     09
+    lz 同 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 字节不一致 ✗03 02
+        ph 01 02
+     09
+    zt 卡write 01 0x0D  0x00 02
+    zt 卡write 01 0x0C  0x04 02
+    zt 卡write 01 0x00  0x22 02
+    zz 同
+ 09
+
+tt nic_ARP问 01 a  b  c  d 02 -> u64  08
+    lz 卡在 0  08
+        zz 0
+     09
+    tz i = 0
+
+    i = 0
+    ll  08
+        lz i 6  08 ls  09
+        sh 01 frame址 ht i 02 , 0xFF
+        i = i ht 1
+     09
+    i = 0
+    ll  08
+        lz i 6  08 ls  09
+        sh 01 frame址 ht 01 6 ht i 02 02 , 01 卡MAC ht i 02
+        i = i ht 1
+     09
+    sh 01 frame址 ht 12 02 , 0x08
+    sh 01 frame址 ht 13 02 , 0x06
+
+    sh 01 frame址 ht 14 02 , 0x00
+    sh 01 frame址 ht 15 02 , 0x01
+    sh 01 frame址 ht 16 02 , 0x08
+    sh 01 frame址 ht 17 02 , 0x00
+    sh 01 frame址 ht 18 02 , 6
+    sh 01 frame址 ht 19 02 , 4
+    sh 01 frame址 ht 20 02 , 0x00
+    sh 01 frame址 ht 21 02 , 0x01
+    i = 0
+    ll  08
+        lz i 6  08 ls  09
+        sh 01 frame址 ht 01 22 ht i 02 02 , 01 卡MAC ht i 02
+        i = i ht 1
+     09
+    sh 01 frame址 ht 28 02 , 10
+    sh 01 frame址 ht 29 02 , 0
+    sh 01 frame址 ht 30 02 , 2
+    sh 01 frame址 ht 31 02 , 15
+    i = 0
+    ll  08
+        lz i 6  08 ls  09
+        sh 01 frame址 ht 01 32 ht i 02 02 , 0
+        i = i ht 1
+     09
+    sh 01 frame址 ht 38 02 , a
+    sh 01 frame址 ht 39 02 , b
+    sh 01 frame址 ht 40 02 , c
+    sh 01 frame址 ht 41 02 , d
+
+    i = 42
+    ll  08
+        lz i 60  08 ls  09
+        sh 01 frame址 ht i 02 , 0
+        i = i ht 1
+     09
+    zz zt nic_发frame 01 frame址  60 02
+ 09
+
+tt nic_ARP等 01 02 -> u64  08
+    tz n = 0
+    ll  08
+        lz n 400000  08 ls  09
+        tz l = zt nic_收frame 01 收址 02
+        lh l 0  08
+            tz t1 = fh 01 收址 ht 12 02
+            tz t2 = fh 01 收址 ht 13 02
+            lz t1 0x08  08
+                lz t2 0x06  08
+                    tz op = fh 01 收址 ht 21 02
+                    lz op 2  08
+                        zz l
+                     09
+                 09
+             09
+         09
+        n = n ht 1
+     09
+    zz 0
+ 09
+
+tt yMAC 01 off 02 -> u64  08
+    tz i = 0
+    ll  08
+        lz i 6  08 ls  09
+        tz v = fh 01 收址 ht 01 off ht i 02 02
+        tz 高 = 01 v hl 16 02
+        tz 低 = 01 v hf 16 02
+        lh 高 10  08
+            屏出 01 01 48 ht 高 02 02
+         09
+        lz 高 10  08
+            屏出 01 01 87 ht 高 02 02
+         09
+        lh 低 10  08
+            屏出 01 01 48 ht 低 02 02
+         09
+        lz 低 10  08
+            屏出 01 01 87 ht 低 02 02
+         09
+        lh i 5  08
+            屏出 01 58 02
+         09
+        i = i ht 1
+     09
+    zz 0
+ 09
+
+tt nic_问 01 a  b  c  d 02 -> u64  08
+    pss 01 0x8FA6C8 02
+    pc 01 03  [nic] 问 03 02
+    ps 01 a 02
+    屏出 01 46 02
+    ps 01 b 02
+    屏出 01 46 02
+    ps 01 c 02
+    屏出 01 46 02
+    ps 01 d 02
+    pc 01 03  的 MAC…03 02
+    ph 01 02
+    lz zt nic_卡起来 01 02 0  08
+        zz 0
+     09
+
+    lz zt nic_ARP问 01 a  b  c  d 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 发不出去（TSR 没置 PTX）03 02
+        ph 01 02
+        zz 0
+     09
+    pss 01 0x8FA6C8 02
+    pc 01 03  [nic] 发出去了，等回复…03 02
+    ph 01 02
+
+    lz zt nic_ARP等 01 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 没收到回复（超hour）03 02
+        ph 01 02
+        pc 01 03    ISR=0x03 02
+        打十六 01 zt 卡read 01 0x07 02 02
+        pc 01 03   BNRY=0x03 02
+        打十六 01 zt 卡read 01 0x03 02 02
+        pc 01 03   TSR=0x03 02
+        打十六 01 zt 卡read 01 0x04 02 02
+        ph 01 02
+        zt 卡write 01 0x00  0x42 02
+        pc 01 03    CURPAG=0x03 02
+        打十六 01 zt 卡read 01 0x07 02 02
+        zt 卡write 01 0x00  0x22 02
+        zt 卡write 01 0x00  0x82 02
+        pc 01 03   PSTART=0x03 02
+        打十六 01 zt 卡read 01 0x01 02 02
+        pc 01 03   PSTOP=0x03 02
+        打十六 01 zt 卡read 01 0x02 02 02
+        zt 卡write 01 0x00  0x22 02
+        ph 01 02
+        pc 01 03    我们的 MAC=03 02
+        tz q = 0
+        ll  08
+            lz q 6  08 ls  09
+            tz v = 01 卡MAC ht q 02
+            tz 高 = 01 v hl 16 02
+            tz 低 = 01 v hf 16 02
+            lh 高 10  08
+                屏出 01 01 48 ht 高 02 02
+             09
+            lz 高 10  08
+                屏出 01 01 87 ht 高 02 02
+             09
+            lh 低 10  08
+                屏出 01 01 48 ht 低 02 02
+             09
+            lz 低 10  08
+                屏出 01 01 87 ht 低 02 02
+             09
+            lh q 5  08
+                屏出 01 58 02
+             09
+            q = q ht 1
+         09
+        ph 01 02
+        zz 0
+     09
+    pss 01 0x37C46A 02
+    pc 01 03  [nic] 收到回复！03 02
+    ph 01 02
+    pss 01 0xE8F0FF 02
+    pc 01 03         03 02
+    ps 01 a 02
+    屏出 01 46 02
+    ps 01 b 02
+    屏出 01 46 02
+    ps 01 c 02
+    屏出 01 46 02
+    ps 01 d 02
+    pc 01 03  的 MAC = 03 02
+    zt yMAC 01 22 02
+    ph 01 02
+    zz 1
+ 09
+
+tt nic_卡起来 01 02 -> u64  08
+    lz 卡醒 1  08
+        zz 1
+     09
+    frame址 = dz 01 frame缓 02
+    收址 = dz 01 收缓 02
+    lz zt nic_找 01 02 0  08
+        zz 0
+     09
+    zt nic_复位 01 02
+    zt nic_init 01 02
+    卡醒 = 1
+    zz 1
+ 09
+
+tt 解析IP 01 s 02 -> u64  08
+    tz i = 0
+    tz k = 0
+    tz v = 0
+    tz 有 = 0
+    ll  08
+        lz k 4  08 ls  09
+        sh 01 目标IP ht k 02 , 0
+        k = k ht 1
+     09
+    k = 0
+    ll  08
+        tz c = fh 01 s ht i 02
+        lz c 0  08 ls  09
+        lz c 46  08
+            sh 01 目标IP ht k 02 , v
+            k = k ht 1
+            v = 0
+            i = i ht 1
+            lx
+         09
+        lh c 48  08 ls  09
+        lh c 57  08 ls  09
+        v = 01 01 v ht 10 02 ht 01 c hz 48 02 02
+        有 = 1
+        i = i ht 1
+     09
+    lz 有 0  08
+        zz 0
+     09
+    lh k 3  08
+        zz 0
+     09
+    sh 01 目标IP ht 3 02 , v
+    zz 1
+ 09
+
+tt 校验和 01 址  长 02 -> u64  08
+    tz s = 0
+    tz i = 0
+    ll  08
+        lz i 长  08 ls  09
+        tz a = fh 01 址 ht i 02
+        tz b = fh 01 址 ht 01 i ht 1 02 02
+        s = 01 01 01 s ht a 02 ht 01 b ht 256 02 02 02
+        i = 01 i ht 2 02
+     09
+    s = 01 01 01 s hs 0xFFFF 02 ht 01 01 s hl 65536 02 02 02
+    s = 01 01 01 s hs 0xFFFF 02 ht 01 01 s hl 65536 02 02 02
+    zz 01 01 01 s hs 0xFFFF 02 02 hd 0xFFFF 02
+ 09
+
+00 yIP4
+tt yIP4 01 a  b  c  d 02 -> u64  08
+    ps 01 a 02
+    屏出 01 46 02
+    ps 01 b 02
+    屏出 01 46 02
+    ps 01 c 02
+    屏出 01 46 02
+    ps 01 d 02
+    zz 0
+ 09
+
+tt y目标 01 02 -> u64  08
+    zt yIP4 01 01 目标IP ht 0 02  01 目标IP ht 1 02  01 目标IP ht 2 02  01 目标IP ht 3 02 02
+    zz 0
+ 09
+
+tt nic_发PING 01 02 -> u64  08
+    tz i = 0
+    tz b = 0
+
+    i = 0
+    ll  08
+        lz i 6  08 ls  09
+        sh 01 frame址 ht i 02 , 01 网关MAC ht i 02
+        i = i ht 1
+     09
+    i = 0
+    ll  08
+        lz i 6  08 ls  09
+        sh 01 frame址 ht 01 6 ht i 02 02 , 01 卡MAC ht i 02
+        i = i ht 1
+     09
+    sh 01 frame址 ht 12 02 , 0x08
+    sh 01 frame址 ht 13 02 , 0x00
+
+    sh 01 frame址 ht 14 02 , 0x45
+    sh 01 frame址 ht 15 02 , 0x00
+    sh 01 frame址 ht 16 02 , 0x00
+    sh 01 frame址 ht 17 02 , 60
+    sh 01 frame址 ht 18 02 , 0x12
+    sh 01 frame址 ht 19 02 , 0x34
+    sh 01 frame址 ht 20 02 , 0x00
+    sh 01 frame址 ht 21 02 , 0x00
+    sh 01 frame址 ht 22 02 , 64
+    sh 01 frame址 ht 23 02 , 1
+    sh 01 frame址 ht 24 02 , 0
+    sh 01 frame址 ht 25 02 , 0
+    sh 01 frame址 ht 26 02 , 10
+    sh 01 frame址 ht 27 02 , 0
+    sh 01 frame址 ht 28 02 , 2
+    sh 01 frame址 ht 29 02 , 15
+    i = 0
+    ll  08
+        lz i 4  08 ls  09
+        sh 01 frame址 ht 01 30 ht i 02 02 , 01 目标IP ht i 02
+        i = i ht 1
+     09
+    b = zt 校验和 01 01 frame址 ht 14 02  20 02
+    sh 01 frame址 ht 24 02 , 01 b hs 255 02
+    sh 01 frame址 ht 25 02 , 01 01 b hl 256 02 hs 255 02
+
+    sh 01 frame址 ht 34 02 , 8
+    sh 01 frame址 ht 35 02 , 0
+    sh 01 frame址 ht 36 02 , 0
+    sh 01 frame址 ht 37 02 , 0
+    sh 01 frame址 ht 38 02 , 0x1D
+    sh 01 frame址 ht 39 02 , 0x01
+    回显序 = 01 回显序 ht 1 02
+    sh 01 frame址 ht 40 02 , 01 回显序 hs 255 02
+    sh 01 frame址 ht 41 02 , 01 01 回显序 hl 256 02 hs 255 02
+    i = 0
+    ll  08
+        lz i 32  08 ls  09
+        sh 01 frame址 ht 01 42 ht i 02 02 , 01 97 ht i 02
+        i = i ht 1
+     09
+    b = zt 校验和 01 01 frame址 ht 34 02  40 02
+    sh 01 frame址 ht 36 02 , 01 b hs 255 02
+    sh 01 frame址 ht 37 02 , 01 01 b hl 256 02 hs 255 02
+
+    zz zt nic_发frame 01 frame址  74 02
+ 09
+
+tt nic_等PING 01 02 -> u64  08
+    tz n = 0
+    ll  08
+        lz n 600000  08 ls  09
+        tz l = zt nic_收frame 01 收址 02
+        lh l 0  08
+            tz t1 = fh 01 收址 ht 12 02
+            tz t2 = fh 01 收址 ht 13 02
+            lz t1 0x08  08
+                lz t2 0x00  08
+                    tz 头长 = fh 01 收址 ht 14 02
+                    头长 = 01 01 头长 hs 15 02 ht 4 02
+                    tz 协 = fh 01 收址 ht 23 02
+                    lz 协 1  08
+                        tz ty = fh 01 收址 ht 01 14 ht 头长 02 02
+                        lz ty 0  08
+                            zz l
+                         09
+                     09
+                 09
+             09
+         09
+        n = n ht 1
+     09
+    zz 0
+ 09
+
+tt nic_PING 01 参址 02 -> u64  08
+    lz zt nic_卡起来 01 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 找不到nic03 02
+        ph 01 02
+        zz 0
+     09
+    lz zt 解析IP 01 参址 02 0  08
+        sh 01 目标IP ht 0 02 , 8
+        sh 01 目标IP ht 1 02 , 8
+        sh 01 目标IP ht 2 02 , 8
+        sh 01 目标IP ht 3 02 , 8
+     09
+
+    pss 01 0x8FA6C8 02
+    pc 01 03  [nic] ping 03 02
+    zt y目标 01 02
+    pc 01 03  …03 02
+    ph 01 02
+
+    pc 01 03  [nic] 先问网关 10.0.2.2 的 MAC…03 02
+    ph 01 02
+    lz zt nic_ARP问 01 10  0  2  2 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] ARP 发不出去03 02
+        ph 01 02
+        zz 0
+     09
+    lz zt nic_ARP等 01 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 网关没应答03 02
+        ph 01 02
+        zz 0
+     09
+    tz i = 0
+    ll  08
+        lz i 6  08 ls  09
+        tz v = fh 01 收址 ht 01 22 ht i 02 02
+        sh 01 网关MAC ht i 02 , v
+        i = i ht 1
+     09
+    pc 01 03  [nic] 网关 MAC = 03 02
+    zt yMAC 01 22 02
+    ph 01 02
+
+    tz 起 = ms 01 02
+    lz zt nic_发PING 01 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] ICMP 发不出去03 02
+        ph 01 02
+        zz 0
+     09
+    pc 01 03  [nic] pkt发出去了，等回显应答…03 02
+    ph 01 02
+
+    lz zt nic_等PING 01 02 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  [nic] 没等到回显应答（超hour）03 02
+        ph 01 02
+        zz 0
+     09
+    tz 停 = ms 01 02
+    pss 01 0x37C46A 02
+    pc 01 03  [nic] 收到回显应答！ 03 02
+    zt y目标 01 02
+    pc 01 03  往返 03 02
+    ps 01 01 停 hz 起 02 02
+    pc 01 03  ms03 02
+    ph 01 02
+    zz 1
+ 09

@@ -34,16 +34,16 @@ _gfx_pitch:  .long 0
     .extern _tgt_pitch
     .globl _efi_从XBP
 _efi_从XBP:
-    mov eax, [0x520]
+    mov eax, [0x3000]
     mov [_efi_fb], rax
     mov [_gfx_fb], eax
-    mov eax, [0x524]
+    mov eax, [0x3004]              # 字节行跨（大道已经 ×4 了）
     mov [_efi_pitch], rax
     mov [_gfx_pitch], eax
-    mov eax, [0x528]
+    mov eax, [0x3008]
     mov [_efi_w], rax
     mov [_gfx_w], eax
-    mov eax, [0x52C]
+    mov eax, [0x300C]
     mov [_efi_h], rax
     mov [_gfx_h], eax
     # ★ 关键：_gfx_text 看 _tgt，必须指向帧缓冲

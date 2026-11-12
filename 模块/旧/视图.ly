@@ -1,0 +1,421 @@
+00 view
+
+ts view数 = 0
+ts 当前view = 0
+ts 名表[16] = 0
+ts 名指[16] = 0
+ts 映射数 = 0
+
+ts view名[64] = 0
+ts 当前名缓[32] = 0
+ts 当前名址 = 0
+ts view能力[4] = 0
+ts view父[4] = 0
+ts view映射数[4] = 0
+ts view池[400] = 0
+ts 名区[80] = 0
+ts 池址 = 0
+ts 名址 = 0
+
+ts phc[512] = 0
+ts phsy = 0
+ts phzj = 0
+ts phds = 0
+
+tt 池位 01 i  j  off 02 -> u64  08
+    zz 01 01 01 01 i ht 5 02 ht j 02 ht 20 02 ht off 02
+ 09
+
+tt view_存回 01 i 02 -> u64  08
+    lz i 当前view  08
+        tz n = 映射数
+        lh n 5  08
+            n = 5
+         09
+        sh 01 view映射数 ht i 02 , n
+     09
+    zz 0
+ 09
+
+tt view_取name 01 i 02 -> u64  08
+    tz k = 0
+    ll  08
+        lz k 16  08 ls  09
+        tz c = 01 view名 ht 01 i ht 16 ht k 02 02
+        sh 01 当前名址 ht k 02 , c
+        k = k ht 1
+     09
+    sh 01 当前名址 ht 16 02 , 0
+    zz 0
+ 09
+
+tt view_载入 01 i 02 -> u64  08
+    zt view_取name 01 i 02
+    tz n = 01 view映射数 ht i 02
+    lh n 5  08
+        n = 5
+     09
+    tz j = 0
+    ll  08
+        lz j n  08 ls  09
+        tz k = 0
+        ll  08
+            lz k 16  08 ls  09
+            tz c = fh 01 池址 ht zt 池位 01 i  j  k 02 02
+            sh 01 名址 ht 01 j ht 16 ht k 02 02 , c
+            k = k ht 1
+         09
+        sh 01 名表 ht j 02 , 01 名址 ht 01 j ht 16 02 02
+        tz h = fh 01 池址 ht zt 池位 01 i  j  16 02 02
+        tz h1 = fh 01 池址 ht zt 池位 01 i  j  17 02 02
+        tz h2 = fh 01 池址 ht zt 池位 01 i  j  18 02 02
+        tz h3 = fh 01 池址 ht zt 池位 01 i  j  19 02 02
+        sh 01 名指 ht j 02 , 01 01 h ht h1 ht 256 02 ht 01 h2 ht 65536 02 ht 01 h3 ht 16777216 02 02
+        j = j ht 1
+     09
+    映射数 = n
+    zz 0
+ 09
+
+tt view_切换 01 i 02 -> u64  08
+    lh i view数  08
+        zz 0
+     09
+    lz i 当前view  08
+        zz 1
+     09
+    zt view_存回 01 当前view 02
+    zt view_载入 01 i 02
+    当前view = i
+    zz 1
+ 09
+
+tt view_签发 01 名  能力 02 -> u64  08
+    lh 当前view 0  08
+        pss 01 0xE0554A 02
+        pc 01 03  只有敕能签发勅03 02
+        换行 01 02
+        zz 0
+     09
+    lh view数 4  08
+        zz 0
+     09
+    tz 新 = view数
+    view数 = 01 view数 ht 1 02
+    sh 01 view能力 ht 新 02 , 能力
+    sh 01 view父 ht 新 02 , 当前view
+    tz k = 0
+    ll  08
+        lh k 15  08 ls  09
+        tz c = fh 01 名 ht k 02
+        sh 01 view名 ht 01 新 ht 16 ht k 02 02 , c
+        lz c 0  08 ls  09
+        k = k ht 1
+     09
+    ll  08
+        lz k 16  08 ls  09
+        sh 01 view名 ht 01 新 ht 16 ht k 02 02 , 0
+        k = k ht 1
+     09
+    zt view_存回 01 当前view 02
+    tz jj = 0
+    ll  08
+        lz jj 5  08 ls  09
+        tz kk = 0
+        ll  08
+            lz kk 20  08 ls  09
+            tz cc = r8 01 01 池址 ht zt 池位 01 当前view  jj  kk 02 02 02
+            lh cc 0  08
+                sh 01 池址 ht zt 池位 01 新  jj  kk 02 02 , cc
+             09
+            kk = kk ht 1
+         09
+        jj = jj ht 1
+     09
+    sh 01 view映射数 ht 新 02 , 01 view映射数 ht 当前view 02
+    当前view = 新
+    zt view_载入 01 新 02
+    zz 1
+ 09
+
+tt view_当前名 01 02 -> u64  08
+    zz 当前名址
+ 09
+
+tt view_存盘 01 02 -> u64  08
+    lz zt pready吗 01 02 0  08
+        zz 0
+     09
+    tz i = 0
+    ll  08
+        lz i 512  08 ls  09
+        sh 01 phc ht i 02 , 0
+        i = i ht 1
+     09
+    sh 01 phc ht 0 02 , 01 view数 hf 256 02
+    sh 01 phc ht 1 02 , 01 当前view hf 256 02
+    i = 0
+    ll  08
+        lz i 4  08 ls  09
+        tz k = 0
+        ll  08
+            lz k 16  08 ls  09
+            sh 01 phc ht 01 16 ht i ht 20 ht k 02 02 , 01 view名 ht 01 i ht 16 ht k 02 02
+            k = k ht 1
+         09
+        sh 01 phc ht 01 16 ht i ht 20 ht 16 02 02 , 01 view能力 ht i 02 hf 256 02
+        sh 01 phc ht 01 16 ht i ht 20 ht 17 02 02 , 01 01 view能力 ht i 02 hl 256 02 hf 256 02
+        sh 01 phc ht 01 16 ht i ht 20 ht 18 02 02 , 01 view映射数 ht i 02
+        sh 01 phc ht 01 16 ht i ht 20 ht 19 02 02 , 01 view父 ht i 02
+        i = i ht 1
+     09
+    lz zt pdx 01 2 02 0  08
+        zz 0
+     09
+    i = 0
+    ll  08
+        lz i 400  08 ls  09
+        sh 01 phc ht i 02 , r8 01 01 池址 ht i 02 02
+        i = i ht 1
+     09
+    zt pdx 01 3 02
+    zz 1
+ 09
+
+tt view_read盘 01 02 -> u64  08
+    lz zt pready吗 01 02 0  08
+        zz 0
+     09
+    lz zt pdd 01 2 02 0  08
+        zz 0
+     09
+    lz 01 phc ht 0 02 0  08
+        zz 0
+     09
+    view数 = 01 phc ht 0 02
+    lh view数 4  08
+        view数 = 4
+     09
+    当前view = 01 phc ht 1 02
+    lh 当前view view数  08
+        当前view = 0
+     09
+    tz i = 0
+    ll  08
+        lz i 4  08 ls  09
+        tz k = 0
+        ll  08
+            lz k 16  08 ls  09
+            sh 01 view名 ht 01 i ht 16 ht k 02 02 , 01 phc ht 01 16 ht i ht 20 ht k 02 02
+            k = k ht 1
+         09
+        sh 01 view能力 ht i 02 , 01 01 phc ht 01 16 ht i ht 20 ht 16 02 02 ht 01 phc ht 01 16 ht i ht 20 ht 17 02 ht 256 02 02
+        sh 01 view映射数 ht i 02 , 01 phc ht 01 16 ht i ht 20 ht 18 02 02
+        sh 01 view父 ht i 02 , 01 phc ht 01 16 ht i ht 20 ht 19 02 02
+        i = i ht 1
+     09
+    zt pdd 01 3 02
+    i = 0
+    ll  08
+        lz i 400  08 ls  09
+        sh 01 池址 ht i 02 , 01 phc ht i 02
+        i = i ht 1
+     09
+    zt view_载入 01 当前view 02
+    zz 1
+ 09
+
+tt view_init 01 02 -> u64  08
+    当前名址 = dz 01 当前名缓 02
+    名址 = dz 01 名区 02
+    池址 = dz 01 view池 02
+    sh 01 view名 ht 0 02 , 104
+    sh 01 view名 ht 1 02 , 117
+    sh 01 view名 ht 2 02 , 110
+    sh 01 view名 ht 3 02 , 100
+    sh 01 view名 ht 4 02 , 117
+    sh 01 view名 ht 5 02 , 110
+    tz i = 6
+    ll  08
+        lz i 16  08 ls  09
+        sh 01 view名 ht i 02 , 0
+        i = i ht 1
+     09
+    sh 01 view能力 ht 0 02 , 31
+    sh 01 view父 ht 0 02 , 0xFFFFFFFF
+    sh 01 view映射数 ht 0 02 , 0
+    view数 = 1
+    当前view = 0
+    zt view_取name 01 0 02
+    zz 0
+ 09
+
+tt view_自检 01 02 -> u64  08
+    pss 01 0x9AC4FF 02
+    pc 01 03  view 03 02
+    pc 01 zt view_当前名 01 02 02
+    pc 01 03  能力 0x03 02
+    打十六 01 01 view能力 ht 当前view 02 02
+    pc 01 03  映射 03 02
+    ps 01 01 view映射数 ht 当前view 02 02
+    pc 01 03  个03 02
+    换行 01 02
+    lz 当前view 0  08
+        pss 01 0x8FA6C8 02
+        pc 01 03        ← 敕，全权03 02
+        换行 01 02
+     09
+    lh 当前view 0  08
+        pss 01 0x8FA6C8 02
+        pc 01 03        ← 勅，只有父给的那几位03 02
+        换行 01 02
+     09
+    zz 0
+ 09
+
+tt 能力名 01 位 02 -> u64  08
+    lz 位 1  08
+        zz 03screen03
+     09
+    lz 位 2  08
+        zz 03keyboard03
+     09
+    lz 位 4  08
+        zz 03mouse03
+     09
+    lz 位 8  08
+        zz 03盘03
+     09
+    lz 位 16  08
+        zz 03net03
+     09
+    zz 03未知03
+ 09
+
+tt view_有能力 01 位 02 -> u64  08
+    tz 有 = 01 01 view能力 ht 当前view 02 hs 位 02
+    lh 有 0  08
+        zz 1
+     09
+    zz 0
+ 09
+
+tt view_给得起 01 位 02 -> u64  08
+    tz 交集 = 01 01 view能力 ht 当前view 02 hs 位 02
+    lz 交集 位  08
+        zz 1
+     09
+    zz 0
+ 09
+
+tt view_要能力 01 位 02 -> u64  08
+    lz zt view_有能力 01 位 02 1  08
+        zz 1
+     09
+    pss 01 0xE0554A 02
+    pc 01 03  这个勅没有「03 02
+    pc 01 zt 能力名 01 位 02 02
+    pc 01 03」能力03 02
+    换行 01 02
+    pss 01 0x8FA6C8 02
+    pc 01 03  （能力不是perm位 —— 是这个view里根本没有这个东西）03 02
+    换行 01 02
+    zz 0
+ 09
+
+tt view_加映射 01 名  hash 02 -> u64  08
+    tz v = 当前view
+    tz n = 01 view映射数 ht v 02
+    lh n 5  08
+        zz 0
+     09
+    tz b = 01 01 v ht 100 02 ht 01 n ht 20 02 02
+    tz k = 0
+    ll  08
+        lh k 15  08 ls  09
+        tz c = fh 01 名 ht k 02
+        sh 01 池址 ht b ht k 02 , c
+        lz c 0  08 ls  09
+        k = k ht 1
+     09
+    ll  08
+        lz k 16  08 ls  09
+        sh 01 池址 ht b ht k 02 , 0
+        k = k ht 1
+     09
+    sh 01 池址 ht b ht 16 02 , 01 hash hs 255 02
+    sh 01 池址 ht b ht 17 02 , 01 01 01 hash hl 256 02 hs 255 02 02
+    sh 01 池址 ht b ht 18 02 , 01 01 01 hash hl 65536 02 hs 255 02 02
+    sh 01 池址 ht b ht 19 02 , 01 01 01 hash hl 16777216 02 hs 255 02 02
+    sh 01 view映射数 ht v 02 , 01 n ht 1 02
+    lz v 当前view  08
+        映射数 = 01 n ht 1 02
+     09
+    zz 1
+ 09
+
+tt view_列映射 01 02 -> u64  08
+    tz v = 当前view
+    tz n = 01 view映射数 ht v 02
+    lz n 0  08
+        pc 01 03  （这个view里还没有name）03 02
+        换行 01 02
+        zz 0
+     09
+    tz i = 0
+    ll  08
+        lz i n  08 ls  09
+        tz b = 01 01 v ht 100 02 ht 01 i ht 20 02 02
+        tz k = 0
+        tz 权 = 1
+        tz h = 0
+        ll  08
+            lz k 4  08 ls  09
+            h = 01 01 h ht r8 01 01 池址 ht b ht 16 ht k 02 02 ht 权 02 02
+            权 = 01 权 ht 256 02
+            k = k ht 1
+         09
+        pc 01 03    03 02
+        pc 01 01 池址 ht b 02 02
+        pc 01 03   →   0x03 02
+        打十六 01 h 02
+        换行 01 02
+        i = i ht 1
+     09
+    zz 0
+ 09
+
+tt view_名是 01 i  名 02 -> u64  08
+    tz k = 0
+    ll  08
+        tz a = 01 view名 ht 01 i ht 16 ht k 02 02
+        tz b = fh 01 名 ht k 02
+        lh a b  08
+            zz 0
+         09
+        lz a 0  08
+            zz 1
+         09
+        k = k ht 1
+        lh k 16  08
+            zz 1
+         09
+     09
+    zz 0
+ 09
+
+tt view_切换名 01 名 02 -> u64  08
+    tz i = 0
+    ll  08
+        lz i view数  08 ls  09
+        lz zt view_名是 01 i  名 02 1  08
+            zz zt view_切换 01 i 02
+         09
+        i = i ht 1
+     09
+    pss 01 0xE0554A 02
+    pc 01 03  没有叫这个的view：03 02
+    pc 01 名 02
+    换行 01 02
+    zz 0
+ 09

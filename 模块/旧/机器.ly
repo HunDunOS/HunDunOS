@@ -1,0 +1,353 @@
+00 machine
+
+00 ---- buf区 ----
+ts machine缓[256] = 0
+ts machine缓址 = 0
+ts machine缓2[256] = 0
+ts machine缓2址 = 0
+
+00 ---- func ----
+tt machine抄 01 出  s 02 -> u64  08
+    tz i = 0
+    ll  08
+        tz c = fh 01 s ht i 02
+        lz c 0  08 ls  09
+        sh 01 出 ht i 02 , c
+        i = i ht 1
+     09
+    sh 01 出 ht i 02 , 0
+    zz i
+ 09
+
+tt machine清 01 出  n 02 -> u64  08
+    tz i = 0
+    ll  08
+        lz i n  08 ls  09
+        sh 01 出 ht i 02 , 0
+        i = i ht 1
+     09
+    zz 0
+ 09
+
+00 CPU：CPUID
+tt machine_CPU厂商 01 出 02 -> u64  08
+    tz b = CPUB 01 02
+    tz d = CPUD 01 02
+    tz c = CPUC 01 02
+    tz i = 0
+    ll  08
+        lz i 4  08 ls  09
+        sh 01 出 ht i 02 , 01 b hl 01 1 ht 01 i ht 8 02 02 02 hf 256
+        i = i ht 1
+     09
+    ll  08
+        lz i 8  08 ls  09
+        sh 01 出 ht i 02 , 01 d hl 01 1 ht 01 01 i 02 hz 4 02 ht 8 02 02 02 hf 256
+        i = i ht 1
+     09
+    ll  08
+        lz i 12  08 ls  09
+        sh 01 出 ht i 02 , 01 c hl 01 1 ht 01 01 i 02 hz 8 02 ht 8 02 02 02 hf 256
+        i = i ht 1
+     09
+    sh 01 出 ht 12 02 , 0
+    zz 12
+ 09
+
+tt machine_CPU型号 01 出 02 -> u64  08
+    tz f = 0x80000002
+    tz k = 0
+    ll  08
+        lz k 3  08 ls  09
+        tz a = CPUE 01 02
+        tz b = CPUB 01 02
+        tz c = CPUC 01 02
+        tz d = CPUD 01 02
+        tz i = 0
+        ll  08
+            lz i 4  08 ls  09
+            sh 01 出 ht k ht 16 ht i 02 , 01 a hl 01 1 ht 01 i ht 8 02 02 02 hf 256
+            i = i ht 1
+         09
+        ll  08
+            lz i 8  08 ls  09
+            sh 01 出 ht k ht 16 ht i 02 , 01 b hl 01 1 ht 01 01 i 02 hz 4 02 ht 8 02 02 02 hf 256
+            i = i ht 1
+         09
+        ll  08
+            lz i 12  08 ls  09
+            sh 01 出 ht k ht 16 ht i 02 , 01 c hl 01 1 ht 01 01 i 02 hz 8 02 ht 8 02 02 02 hf 256
+            i = i ht 1
+         09
+        ll  08
+            lz i 16  08 ls  09
+            sh 01 出 ht k ht 16 ht i 02 , 01 d hl 01 1 ht 01 01 i 02 hz 12 02 ht 8 02 02 02 hf 256
+            i = i ht 1
+         09
+        f = f ht 1
+        k = k ht 1
+     09
+    sh 01 出 ht 48 02 , 0
+    zz 48
+ 09
+
+tt machine_CPU核数 01 02 -> u64  08
+    zz 01 01 CPUB 01 02 02 hl 65536 02 hf 256
+ 09
+
+00 SMBIOS
+tt machine_SMBIOS表 01 02 -> u64  08
+    tz p = 0xF0000
+    ll  08
+        lh p 0xFFFFF  08 ls  09
+        lz 01 read32 01 p 02 02 0x5F4D535F  08
+            zz 01 read32 01 p ht 24 02 02
+         09
+        p = p ht 16
+     09
+    zz 0
+ 09
+
+tt machine_下个struct 01 t 02 -> u64  08
+    tz L = r8 01 t ht 1 02
+    lz L 0  08
+        zz 0
+     09
+    tz p = t ht L
+    tz 步 = 0
+    ll  08
+        lh 步 512  08 ls  09
+        lz r8 01 p 02 0  08 ls  09
+        p = p ht 1
+        步 = 步 ht 1
+     09
+    p = p ht 1
+    lz r8 01 p 02 0  08
+        p = p ht 1
+     09
+    zz p
+ 09
+
+tt machine_找struct 01 type 02 -> u64  08
+    tz t = zt machine_SMBIOS表 01 02
+    lz t 0  08
+        zz 0
+     09
+    tz i = 0
+    ll  08
+        lz i 64  08 ls  09
+        tz ty = r8 01 t 02
+        lz ty 127  08
+            zz 0
+         09
+        lz ty type  08
+            zz t
+         09
+        t = zt machine_下个struct 01 t 02
+        lz t 0  08
+            zz 0
+         09
+        i = i ht 1
+     09
+    zz 0
+ 09
+
+tt machine_取串 01 struct  序号  出 02 -> u64  08
+    lz struct 0  08
+        zz 0
+     09
+    lz 序号 0  08
+        zz 0
+     09
+    tz L = r8 01 struct ht 1 02
+    tz s = struct ht L
+    tz n = 1
+    ll  08
+        lz n 序号  08 ls  09
+        ll  08
+            lz r8 01 s 02 0  08 ls  09
+            s = s ht 1
+         09
+        s = s ht 1
+        n = n ht 1
+        lz r8 01 s 02 0  08
+            zz 0
+         09
+     09
+    tz i = 0
+    ll  08
+        tz c = r8 01 s ht i 02
+        lz c 0  08 ls  09
+        sh 01 出 ht i 02 , c
+        i = i ht 1
+     09
+    sh 01 出 ht i 02 , 0
+    zz i
+ 09
+
+tt machine_BIOS厂商 01 出 02 -> u64  08
+    tz t = zt machine_找struct 01 0 02
+    lz t 0  08
+        zz 0
+     09
+    zz zt machine_取串 01 t  r8 01 t ht 4 02  出 02
+ 09
+
+tt machine_整机厂商 01 出 02 -> u64  08
+    tz t = zt machine_找struct 01 1 02
+    lz t 0  08
+        zz 0
+     09
+    zz zt machine_取串 01 t  r8 01 t ht 4 02  出 02
+ 09
+
+tt machine_整机型号 01 出 02 -> u64  08
+    tz t = zt machine_找struct 01 1 02
+    lz t 0  08
+        zz 0
+     09
+    zz zt machine_取串 01 t  r8 01 t ht 5 02  出 02
+ 09
+
+00 PCI / gpu
+tt machine_PCIread 01 总线  设备  功能  偏移 02 -> u64  08
+    dc32 01 0xCF8  0x80000000 ht 总线 ht 65536 ht 设备 ht 2048 ht 功能 ht 256 ht 01 偏移 hs 0xFC 02 02
+    zz dr32 01 0xCFC 02
+ 09
+
+ts gpu厂商号 = 0
+ts gpu设备号 = 0
+ts gpu总线 = 0
+
+tt machine_找gpu 01 02 -> u64  08
+    tz bus = 0
+    ll  08
+        lz bus 256  08 ls  09
+        tz dev = 0
+        ll  08
+            lz dev 32  08 ls  09
+            tz id = zt machine_PCIread 01 bus  dev  0  0 02
+            lh 01 01 id hs 0xFFFF 02 02 0xFFFF  08
+                lh id 0xFFFFFFFF  08
+                    tz cc = zt machine_PCIread 01 bus  dev  0  8 02
+                    lz 01 cc hl 16777216 02 3  08
+                        gpu厂商号 = id hs 0xFFFF
+                        gpu设备号 = id hl 65536
+                        gpu总线 = bus ht 256 ht dev
+                        zz 1
+                     09
+                 09
+             09
+            dev = dev ht 1
+         09
+        bus = bus ht 1
+     09
+    zz 0
+ 09
+
+tt machine_gpu名 01 出 02 -> u64  08
+    lz zt machine_找gpu 01 02 0  08
+        zz zt machine抄 01 出  03（PCI 上没找到显示设备）03 02
+     09
+    lz gpu厂商号 0x1234  08
+        zz zt machine抄 01 出  03QEMU hl Bochs 标准 VGA03 02
+     09
+    lz gpu厂商号 0x8086  08
+        zz zt machine抄 01 出  03Intel 集成gpu03 02
+     09
+    lz gpu厂商号 0x10DE  08
+        zz zt machine抄 01 出  03NVIDIA03 02
+     09
+    lz gpu厂商号 0x1002  08
+        zz zt machine抄 01 出  03AMD hl ATI03 02
+     09
+    lz gpu厂商号 0x1AF4  08
+        zz zt machine抄 01 出  03Virtio GPU（虚拟化）03 02
+     09
+    lz gpu厂商号 0x15AD  08
+        zz zt machine抄 01 出  03VMware 虚拟gpu03 02
+     09
+    zz zt machine抄 01 出  03未识别的厂商03 02
+ 09
+
+00 CPU 核数
+tt machine_RSDP 01 02 -> u64  08
+    tz p = 0xE0000
+    ll  08
+        lh p 0xFFFFF  08 ls  09
+        lz read32 01 p 02 0x20445352  08
+            lz read32 01 p ht 4 02 0x20525450  08
+                zz p
+             09
+         09
+        p = p ht 16
+     09
+    zz 0
+ 09
+
+tt machine_ACPI表 01 签名 02 -> u64  08
+    tz r = zt machine_RSDP 01 02
+    lz r 0  08
+        zz 0
+     09
+    tz rsdt = read32 01 r ht 16 02
+    lz rsdt 0  08
+        zz 0
+     09
+    lh read32 01 rsdt 02 0x54445352  08
+        zz 0
+     09
+    tz 长 = read32 01 rsdt ht 4 02
+    lh 长 36  08
+        zz 0
+     09
+    lh 长 4096  08
+        zz 0
+     09
+    tz n = 01 01 长 hz 36 02 hl 4 02
+    lh n 64  08
+        n = 64
+     09
+    tz i = 0
+    ll  08
+        lz i n  08 ls  09
+        tz t = read32 01 rsdt ht 36 ht i ht 4 02
+        lh t 0  08
+            lz read32 01 t 02 签名  08
+                zz t
+             09
+         09
+        i = i ht 1
+     09
+    zz 0
+ 09
+
+tt machine_核数 01 02 -> u64  08
+    tz m = zt machine_ACPI表 01 0x43495041 02
+    lz m 0  08
+        zz 0
+     09
+    tz 长 = read32 01 m ht 4 02
+    lh 长 44  08
+        zz 0
+     09
+    lh 长 8192  08
+        zz 0
+     09
+    tz p = m ht 44
+    tz 尾 = m ht 长
+    tz n = 0
+    ll  08
+        lh 01 p ht 2 02 尾  08 ls  09
+        tz type = r8 01 p 02
+        tz 记录长 = r8 01 p ht 1 02
+        lh 记录长 2  08 ls  09
+        lz type 0  08
+            lz 01 r8 01 p ht 4 02 02 hs 1  08
+                n = n ht 1
+             09
+         09
+        p = p ht 记录长
+     09
+    zz n
+ 09

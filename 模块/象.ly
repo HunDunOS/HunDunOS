@@ -109,6 +109,11 @@ tt 象_合 01 02 -> u64  08
     tz t4 = 0
     tz t5 = 0
     tz t6 = 0
+    00 现读 XBP（0x520 帧缓冲 / 0x524 行跨），不信全局变量
+    t6 = fh 0x0520
+    t6 = 01 t6 hs 0xFFFFFFFF 02
+    t4 = fh 0x0524
+    t4 = 01 t4 hs 0xFFFFFFFF 02
     t1 = 0
     ll  08
         lz t1 400  08 ls  09
@@ -117,10 +122,10 @@ tt 象_合 01 02 -> u64  08
         t2 = 01 0xC00000 ht t2 02
         00 屏幕这一行的起点
         t3 = 01 gy ht t1 02
-        t3 = 01 t3 hh 屏行 02
+        t3 = 01 t3 hh t4 02
         t4 = 01 gx hh 4 02
         t3 = 01 t3 ht t4 02
-        t3 = 01 屏基 ht t3 02
+        t3 = 01 t6 ht t3 02
         t5 = 640
         ll  08
             lz t5 0  08 ls  09

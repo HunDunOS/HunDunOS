@@ -1,0 +1,301 @@
+00 comp
+
+ts dict[4096] = 0
+ts 位缓 = 0
+ts 位掩 = 0
+ts 位错 = 0
+ts 入串 = 0
+ts 入长 = 0
+ts 入位 = 0
+ts 出串 = 0
+ts 出长 = 0
+
+ts 压出[640] = 0
+ts 解出[640] = 0
+ts 压出址 = 0
+ts 解出址 = 0
+
+00 取一个input字节
+tt 取入 01 02 -> u64  08
+    lh 入位 入长  08
+        zz 256
+     09
+    tz c = fh 01 入串 ht 入位 02
+    入位 = 入位 ht 1
+    zz c
+ 09
+
+00 位output
+tt 位write 01 v 02 -> u64  08
+    lh v 0  08
+        位缓 = 位缓 ht 位掩
+     09
+    位掩 = 位掩 hl 2
+    lz 位掩 0  08
+        sh 01 出串 ht 出长 02 , 位缓
+        出长 = 出长 ht 1
+        位缓 = 0
+        位掩 = 128
+     09
+    zz 0
+ 09
+
+tt 位冲 01 02 -> u64  08
+    lh 位掩 128  08
+        sh 01 出串 ht 出长 02 , 位缓
+        出长 = 出长 ht 1
+     09
+    位掩 = 0
+    位缓 = 0
+    zz 0
+ 09
+
+00 位input
+tt 位read 01 n 02 -> u64  08
+    tz x = 0
+    tz i = 0
+    ll  08
+        lz i n  08 ls  09
+        lz 位掩 0  08
+            lh 入位 入长  08
+                位错 = 1
+                zz x
+             09
+            tz c = fh 01 入串 ht 入位 02
+            入位 = 入位 ht 1
+            位缓 = c
+            位掩 = 128
+         09
+        x = x ht 2
+        lh 01 01 位缓 hs 位掩 02 02 0  08
+            x = x ht 1
+         09
+        位掩 = 位掩 hl 2
+        i = i ht 1
+     09
+    zz x
+ 09
+
+00 output一个字面量
+tt 文write 01 ch 02 -> u64  08
+    zt 位write 01 0 02
+    tz m = 256
+    ll  08
+        m = m hl 2
+        lz m 0  08 ls  09
+        zt 位write 01 01 ch hs m 02 02
+     09
+    zz 0
+ 09
+
+00 output一个引用
+tt 引用write 01 p  l 02 -> u64  08
+    zt 位write 01 1 02
+    tz m = 2048
+    ll  08
+        m = m hl 2
+        lz m 0  08 ls  09
+        zt 位write 01 01 p hs m 02 02
+     09
+    tz m2 = 16
+    ll  08
+        m2 = m2 hl 2
+        lz m2 0  08 ls  09
+        zt 位write 01 01 l hs m2 02 02
+     09
+    zz 0
+ 09
+
+tt comp 01 入  长  出 02 -> u64  08
+    入串 = 入
+    入长 = 长
+    入位 = 0
+    出串 = 出
+    出长 = 0
+    位缓 = 0
+    位掩 = 128
+
+    tz i = 0
+    ll  08
+        lz i 4096  08 ls  09
+        sh 01 dict ht i 02 , 32
+        i = i ht 1
+     09
+
+    tz 尾 = 2031
+    ll  08
+        lh 尾 4096  08 ls  09
+        tz c = zt 取入 01 02
+        lh c 255  08 ls  09
+        sh 01 dict ht 尾 02 , c
+        尾 = 尾 ht 1
+     09
+
+    tz r = 2031
+    tz s = 0
+    ll  08
+        lh r 尾  08 ls  09
+        tz x = 0
+        tz y = 1
+        tz ch = 01 dict ht r 02
+        tz i2 = s
+        ll  08
+            lh i2 r  08 ls  09
+            tz 找 = 0
+            ll  08
+                lh i2 r  08 ls  09
+                lz 01 dict ht i2 02 ch  08
+                    找 = 1
+                    ls
+                 09
+                i2 = i2 ht 1
+             09
+            lz 找 0  08 ls  09
+            tz f1 = 17
+            lh 01 尾 hz r 02 17  08
+                f1 = 01 尾 hz r 02
+             09
+            tz j = 1
+            ll  08
+                lh j f1  08 ls  09
+                lh 01 dict ht i2 ht j 02 01 dict ht r ht j 02  08 ls  09
+                j = j ht 1
+             09
+            lh j y  08
+                x = i2
+                y = j
+             09
+            lh 01 y ht 1 02 17  08 ls  09
+            i2 = i2 ht 1
+         09
+        lh y 2  08
+            y = 1
+            zt 文write 01 ch 02
+         09
+        lh y 2  08
+            zt 引用write 01 01 x hf 2048 02  01 y hz 2 02 02
+         09
+        r = r ht y
+        s = s ht y
+        lh r 4079  08
+            tz m = 0
+            ll  08
+                lz m 2048  08 ls  09
+                sh 01 dict ht m 02 , 01 dict ht m ht 2048 02
+                m = m ht 1
+             09
+            尾 = 01 尾 hz 2048 02
+            r = 01 r hz 2048 02
+            s = 01 s hz 2048 02
+            ll  08
+                lh 尾 4096  08 ls  09
+                tz c2 = zt 取入 01 02
+                lh c2 255  08 ls  09
+                sh 01 dict ht 尾 02 , c2
+                尾 = 尾 ht 1
+             09
+         09
+     09
+    zt 位冲 01 02
+    zz 出长
+ 09
+
+tt decomp 01 入  长  出 02 -> u64  08
+    入串 = 入
+    入长 = 长
+    入位 = 0
+    出串 = 出
+    出长 = 0
+    位缓 = 0
+    位掩 = 0
+    位错 = 0
+
+    tz i = 0
+    ll  08
+        lz i 4096  08 ls  09
+        sh 01 dict ht i 02 , 32
+        i = i ht 1
+     09
+
+    tz r = 2031
+    ll  08
+        tz c = zt 位read 01 1 02
+        lz 位错 1  08 ls  09
+        lz c 0  08
+            tz b = zt 位read 01 8 02
+            lz 位错 1  08 ls  09
+            sh 01 出串 ht 出长 02 , b
+            出长 = 出长 ht 1
+            sh 01 dict ht r 02 , b
+            r = r ht 1
+            r = 01 r hf 2048 02
+            lx
+         09
+        tz p = zt 位read 01 11 02
+        lz 位错 1  08 ls  09
+        tz l = zt 位read 01 4 02
+        lz 位错 1  08 ls  09
+        tz k = 0
+        ll  08
+            lz k 01 l ht 2 02  08 ls  09
+            tz v = 01 dict ht 01 01 p ht k 02 hf 2048 02 02
+            sh 01 出串 ht 出长 02 , v
+            出长 = 出长 ht 1
+            sh 01 dict ht r 02 , v
+            r = r ht 1
+            r = 01 r hf 2048 02
+            k = k ht 1
+         09
+     09
+    zz 出长
+ 09
+
+tt comp自检 01 02 -> u64  08
+    压出址 = dz 01 压出 02
+    解出址 = dz 01 解出 02
+    tz 原文 = 03hdhdhdhdhdhdhdhdhdhdABCDABCDABCDABCDABCDhdhdhdhdhd03
+    tz 原长 = cl 01 原文 02
+    y 01 03[压] 原文 03 02
+    y 01 原长 02
+    y 01 03  字节
+03 02
+
+    tz 压长 = zt comp 01 原文  原长  压出址 02
+    y 01 03[压] comp后 03 02
+    y 01 压长 02
+    y 01 03  字节
+03 02
+
+    tz 解长 = zt decomp 01 压出址  压长  解出址 02
+    y 01 03[压] 解出 03 02
+    y 01 解长 02
+    y 01 03  字节
+03 02
+
+    lh 解长 原长  08
+        y 01 03[压] len不一致 ✗
+03 02
+        zz 0
+     09
+    tz i = 0
+    tz 同 = 1
+    ll  08
+        lz i 原长  08 ls  09
+        tz a = fh 01 原文 ht i 02
+        tz b = fh 01 解出址 ht i 02
+        lh a b  08
+            同 = 0
+            ls
+         09
+        i = i ht 1
+     09
+    lz 同 1  08
+        y 01 03[压] 逐字节一致 ✓
+03 02
+     09
+    lz 同 0  08
+        y 01 03[压] content不一致 ✗
+03 02
+     09
+    zz 同
+ 09

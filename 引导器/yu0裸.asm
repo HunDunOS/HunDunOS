@@ -5,13 +5,12 @@
 _start:
     lea rsi, [rip + m1]
     call 打
-停:
     mov rsp, 0x70000
     xor rbp, rbp
     mov dx, 0x3F8
     mov al, 74
     out dx, al
-    mov r15, 0x180040
+    mov r15, 0x2A0040
     mov rbx, r15
     mov ecx, 12
 .h1:

@@ -16,21 +16,24 @@ ts a7 = 0x1F018
 ts a8 = 0x1F100
 
 tt f1 01 b1 , b2 02 -> u64  08
-    zz a1 ht 01 01 b1 hh a4 ht b2 02 dh 2 02
+    zz a1 ht 01 01 b1 hh a4 ht b2 02 dh 3 02
  09
 
 tt f2 01 b1 , b2 , b3 02 -> u64  08
     tz b4 = fh a6
     tz b5 = fh a7
-    tz b6 = 01 b3 hs 255 02
-    b6 = b6 hr 01 b4 dh 8 02
-    b6 = b6 hr 01 b5 dh 16 02
-    sh zt f1 01 b1 , b2 02 , b6
+    tz b6 = b3
+    tz b7 = 01 b4 hs 65535 02
+    tz b8 = 01 b5 hs 65535 02
+    b6 = b6 hr 01 b7 dh 32 02
+    b6 = b6 hr 01 b8 dh 48 02
+    tz b9 = zt f1 01 b1 , b2 02
+    sh b9 , b6
     zz 0
  09
-
 tt f3 01 b1 , b2 02 -> u64  08
-    zz fh zt f1 01 b1 , b2 02
+    tz c1 = fh zt f1 01 b1 , b2 02
+    zz 01 c1 hs 0xFFFFFFFF 02
  09
 
 tt f4 01 b1 02 -> u64  08
@@ -57,8 +60,10 @@ tt f5 01 02 -> u64  08
 
 tt f6 01 02 -> u64  08
     tz b1 = 0
+    tz 行末 = 0
+    行末 = a5 hz 1
     ll  08
-        lz b1 01 a5 hz 1 02  08 ls  09
+        lz b1 行末  08 ls  09
         tz b2 = 0
         ll  08
             lz b2 a4  08 ls  09
@@ -76,6 +81,7 @@ tt f6 01 02 -> u64  08
 
 tt f7 01 02 -> u64  08
     tz b1 = fh a2
+    sh a3 , 0
     b1 = b1 ht 1
     lz b1 a5  08
         zt f6 01 02
@@ -104,7 +110,7 @@ tt fc 01 b1 02 -> u64  08
     lz b1 8  08
         zz 0
      09
-    tz b2 = b1 dh 2
+    tz b2 = b1 dh 3
     tz b3 = fh 01 a8 ht b2 02
     sh a6 , b3
     zz 0
@@ -115,7 +121,7 @@ tt fg 01 b1 02 -> u64  08
     lz b1 8  08
         zz 0
      09
-    tz b2 = b1 dh 2
+    tz b2 = b1 dh 3
     tz b3 = fh 01 a8 ht b2 02
     sh a7 , b3
     zz 0
@@ -150,7 +156,7 @@ tt f9 01 b1 02 -> u64  08
  09
 
 tt fa 01 b1 02 -> u64  08
-    tz b2 = 01 b1 hs 255 02
+    tz b2 = 01 b1 hs 0xFFFFFFFF 02
     lz b2 10  08
         zz zt f9 01 10 02
      09
@@ -166,11 +172,11 @@ tt fa 01 b1 02 -> u64  08
     zz zt f8 01 b2 02
  09
 
-tt fb 01 b1 02 -> u64  08
+tt 吐串 01 b1 02 -> u64  08
     tz b2 = b1
     ll  08
         tz b3 = fh b2
-        tz b4 = 01 b3 hs 255 02
+        tz b4 = 01 b3 hs 0xFFFFFFFF 02
         lz b4 0  08 ls  09
         zt fa 01 b4 02
         b2 = b2 ht 1
@@ -205,12 +211,18 @@ tt fk 01 02 -> u64  08
     tz h1 = 0
     tz h2 = 0
     tz h3 = 0
+    tz p1 = 0
+    tz p2 = 0
+    tz p3 = 0
     h1 = 0
     ll  08
         lz h1 a4  08 ls  09
-        h2 = 01 a1 ht 01 01 gh hh a4 ht h1 02 hh 4 02 02
+        p1 = gh hh a4
+        p2 = p1 ht h1
+        p3 = p2 hh 8
+        h2 = a1 ht p3
         h3 = fh h2
-        h3 = 01 h3 hs 255 02
+        h3 = 01 h3 hs 0xFFFFFFFF 02
         lz h3 0  08
             h3 = 32
          09
@@ -249,3 +261,4 @@ tt fj 01 02 -> u64  08
     绘块 01 k1 , k2 , ab , 2 , 0x00E6E6F0 02
     zz 0
  09
+

@@ -172,10 +172,10 @@ _gfx_text:
     push r13
     push r14
     push r15
-    mov r12, [rsp + 72]
-    mov r13, [rsp + 64]
-    mov r14, [rsp + 56]
-    mov eax, [rsp + 48]
+    mov r12, [rsp + 48]      # x
+    mov r13, [rsp + 56]      # y
+    mov r14, [rsp + 64]      # 串
+    mov eax, [rsp + 72]      # 色
     call 编码色
     mov r15d, eax
     mov rbx, r12

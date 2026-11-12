@@ -219,21 +219,12 @@ efi_main:
     call 算移位
     mov [rip + _sh_b], rax
 
-    mov rcx, [rip + _img]
-    lea rdx, [rip + LI_GUID]
-    lea r8, [rip + _li]
-    mov rax, [rbx + 96]
-    call qword ptr [rax + 152]
-    test rax, rax
-    jnz .没块设备
-    mov rax, [rip + _li]
-    test rax, rax
-    jz .没块设备
-    mov rcx, [rax + 24]
-    lea rdx, [rip + BIO_GUID]
+    # 用 LocateProtocol 一步拿 BlockIo 协议（偏移 320）
+    lea rcx, [rip + BIO_GUID]
+    xor rdx, rdx
     lea r8, [rip + _bio]
     mov rax, [rbx + 96]
-    call qword ptr [rax + 152]
+    call qword ptr [rax + 320]
     test rax, rax
     jnz .没块设备
     mov rax, [rip + _bio]
@@ -292,6 +283,25 @@ efi_main:
     jne .下设
     lea rsi, [rip + 报_网]
     call 报串
+
+    # ★ 存下这块卡的位置：class=2 就是网络控制器
+    #   BAR0 读出来存进 XBP 0x540（六爻的网卡驱动直接用）
+    mov eax, 0x80000000
+    mov ecx, r12d
+    shl ecx, 16
+    or eax, ecx
+    mov ecx, r13d
+    shl ecx, 11
+    or eax, ecx
+    add eax, 0x10
+    mov dx, 0xCF8
+    out dx, eax
+    mov dx, 0xCFC
+    in eax, dx
+    and eax, 0xFFFFFFF0
+    mov dword ptr [0x540], eax
+    mov dword ptr [0x544], 1
+
     mov r8d, r14d
     and r8, 0xFFFF
     call 报十六
@@ -427,7 +437,7 @@ efi_main:
     mov rcx, r15
     lea rdx, [rip + _核数]
     lea r8, [rip + _已启]
-    call qword ptr [r15 + 40]
+    call qword ptr [r15]          # GetNumberOfProcessors 在 +0
     mov r14, rax
     lea rsi, [rip + 报_MPgp]
     call 报串
@@ -447,51 +457,63 @@ efi_main:
     call 报串
     mov r8, [rip + _已启]
     call 报十六
+    mov dx, 0x3F8
+    mov al, 0x53
+    out dx, al
     lea rsi, [rip + 报_换行]
     call 报串
 
-    # 放行标记清零、到位计数清零（AP 先用独立地址 0x7F00/0x7F08）
-    mov qword ptr [0x7F00], 0
-    mov qword ptr [0x7F08], 0
+    # # 放行标记清零、到位计数清零（AP 先用独立地址 0x7F00/0x7F08）
+    # mov qword ptr [rip + AP到位数], 0
+    # mov qword ptr [rip + AP放行], 0
 
-    # _mp->StartupAllAPs(This, AP过程, SingleThread=1, 0, 0, 0, 0)  [偏移 216]
-    mov rcx, [rip + _mp]
-    lea rdx, [rip + AP过程]
-    mov r8, 1
-    xor r9, r9
-    mov qword ptr [rsp + 0x20], 0
-    mov qword ptr [rsp + 0x28], 0
-    mov qword ptr [rsp + 0x30], 0
-    mov rax, [rip + _mp]
-    call qword ptr [rax + 216]
+    # # _mp->StartupAllAPs(This, AP过程, SingleThread=0 异步, ...)  [偏移 16]
+    # # sub rsp, 0x38                  # 影子空间 + 3 个栈参数
+    # # mov rcx, [rip + _mp]
+    # # lea rdx, [rip + AP过程]
+    # # mov r8, 0
+    # # xor r9, r9
+    # # mov qword ptr [rsp + 0x20], 0
+    # # mov qword ptr [rsp + 0x28], 0
+    # # mov qword ptr [rsp + 0x30], 0
+    # # mov rax, [rip + _mp]
+    # # call qword ptr [rax + 16]      # StartupAllAPs 在 +16
+    # # add rsp, 0x38
+    # mov dx, 0x3F8
+    # mov al, 0x53
+    # out dx, al                     # 'S' StartupAllAPs 返回了
 
-    # 等最多一小会儿，看有几个 AP 报到
-    mov r12, 0
-.等AP:
-    inc r12
-    cmp r12, 0x2000000
-    ja .AP到位
-    cmp qword ptr [0x7F00], 0
-    je .等AP
+    # # 等最多一小会儿，看有几个 AP 报到
+    # mov r12, 0
+    # .等AP:
+    # inc r12
+    # cmp r12, 0x2000000
+    # ja .AP到位
+    # cmp qword ptr [rip + AP到位数], 0
+    # je .等AP
 
-.AP到位:
-    lea rsi, [rip + 报_AP]
-    call 报串
-    mov r8, [rip + 0x7F00]
-    test r8, r8
-    jz .AP零
-    call 报十六
-    lea rsi, [rip + 报_换行]
-    call 报串
-    # 放行：AP 各自去 hlt 等着领任务
-    mov qword ptr [0x7F08], 1
-    jmp .AP完
+    # .AP到位:
+    # lea rsi, [rip + 报_AP]
+    # call 报串
+    # mov r8, [rip + AP到位数]
+    # test r8, r8
+    # jz .AP零
+    # call 报十六
+    # lea rsi, [rip + 报_换行]
+    # call 报串
+    # # 放行：AP 各自去 hlt 等着领任务
+    # mov qword ptr [rip + AP放行], 1
+    # jmp .AP完
 
-.AP零:
-    lea rsi, [rip + 报_AP0]
-    call 报串
+    # .AP零:
+    # lea rsi, [rip + 报_AP0]
+    # call 报串
 
-.AP完:
+    # .AP完:
+
+    mov dx, 0x3F8
+    mov al, 0x53
+    out dx, al
 .无MP:
     # ================================================================
     mov dx, 0x3F8
@@ -512,43 +534,71 @@ efi_main:
     mov rax, [rip + 合入口]
     mov [0x7080], rax
 
-    装轨 60608, 44, 因时空, 0x7050
+    装轨 62032, 44, 因时空, 0x7050
     mov rax, [rip + 因时空]
     mov [0x7090], rax
 
-    装轨 60600, 45, 回收入口, 0x7058
+    装轨 62000, 45, 回收入口, 0x7058
     mov rax, [rip + 回收入口]
     mov [0x70A0], rax
 
-    装轨 60624, 46, 象入口, 0x7060
+    装轨 62096, 46, 象入口, 0x7060
     mov rax, [rip + 象入口]
     mov [0x70B0], rax
 
-    装轨 60632, 47, 历入口, 0x7068
+    装轨 62128, 47, 历入口, 0x7068
     mov rax, [rip + 历入口]
     mov [0x70C0], rax
 
-    装轨 60640, 48, 数入口, 0x7070
+    装轨 62160, 48, 数入口, 0x7070
     mov rax, [rip + 数入口]
     mov [0x70D0], rax
 
-    装轨 60648, 49, 数测入口, 0x7078
+    装轨 62192, 49, 数测入口, 0x7078
+
+    # 算派（卦 43，落址 0x280000）
+    装轨 62064, 43, 算派入口, 0x7080
+    mov rax, [rip + 算派入口]
+    mov [0x70D8], rax
+
+    # minly 编译器（卦 60，落址 0x400000）
+    # 装轨 62224, 60, 编译器入口, 0x7088   ← 暂时停用，落址 0x400000 与 Dao.efi 冲突
+    #     mov rax, [rip + 编译器入口]
+    #     mov [0x70E0], rax
+
+
+    
+.壁跳:
+    mov dx, 0x3F8
+    mov al, 0x57
+    out dx, al
+
+
 
     # 填XBP：帧缓冲四件套（模块都靠这个找屏幕）
     mov eax, [rip + _efi_fb]
-    mov dword ptr [0x520], eax
-    mov eax, [rip + _efi_pitch]
-    mov dword ptr [0x524], eax
+    mov dword ptr [0x3000], eax
+    # ★ XBP 0x3004 存「字节行跨」= PixelsPerScanLine × 4
+    #   模块一律按字节用，不用每个模块自己记得乘 4
+    mov rax, [rip + _efi_pitch]
+    shl rax, 2
+    mov dword ptr [0x3004], eax
     mov eax, [rip + _efi_w]
-    mov dword ptr [0x528], eax
+    mov dword ptr [0x3008], eax
     mov eax, [rip + _efi_h]
-    mov dword ptr [0x52C], eax
-    mov qword ptr [0x500], 0x50425958
+    mov dword ptr [0x300C], eax
+    mov qword ptr [0x2FF0], 0x50425958
+    mov dx, 0x3F8
+    mov al, 0x58
+    out dx, al
 
 
     lea rsi, [rip + 报_跳]
     call 报串
 
+    mov dx, 0x3F8
+    mov al, 0x4D
+    out dx, al
     mov qword ptr [rip + map大小], 0x80000
     lea rcx, [rip + map大小]
     lea rdx, [rip + map缓冲]
@@ -558,16 +608,38 @@ efi_main:
     mov [rsp + 0x20], rax
     mov rax, [rbx + 96]
     call qword ptr [rax + 56]
-
-    mov rcx, [rip + _img]
-    mov rdx, [rip + map钥匙]
+    # 检查 GetMemoryMap 返回值
+    mov r14, rax
+    mov dx, 0x3F8
+    mov al, 0x47
+    out dx, al
+    test r14, r14
+    jz 1f
+    mov dx, 0x3F8
+    mov al, 0x45
+    out dx, al
+1:
+    mov dx, 0x3F8
+    mov al, 0x4E
+    out dx, al
+    # ★ Exit 之前：把入口地址和 SystemTable 先装进寄存器
+    #    ExitBootServices 之后不能再访问 .data / .bss
+    mov r15, [rip + 阴入口]
+    mov r13, [rip + _img]
+    mov r12, [rip + map钥匙]
+    mov rbx, [rip + _sys]
     mov rax, [rbx + 96]
-    call qword ptr [rax + 232]
 
-    mov rax, [rip + 阴入口]
-    test rax, rax
-    jz .挂
-    jmp rax
+    mov rcx, r13
+    mov rdx, r12
+    call qword ptr [rax + 232]    # ExitBootServices(ImageHandle, MapKey)
+
+    # ★ 立刻跳，不碰任何内存
+    test r15, r15
+    jz 2f
+    jmp r15
+2:
+    jmp 2b
 
 .道标错:
     lea rsi, [rip + 报_坏]
@@ -620,20 +692,16 @@ efi_main:
 
 AP过程:
     mov rax, 1
-    lock xadd qword ptr [0x7078], rax
+    lock xadd qword ptr [rip + AP到位数], rax   # 计数 +1
     inc rax
     mov rcx, rax
-    shl rcx, 13
-    mov rsp, 0x80000
+    shl rcx, 13                         # 每核 8KB
+    lea rsp, [rip + AP栈区]
     add rsp, rcx
-    mov rdi, rax
-.wait0:
-    cmp qword ptr [0x7060], 0
-    je .wait0
 .hang:
     cli
     hlt
-    jmp .hang
+    jmp .hang                      # AP 停在这儿，异步模式下 StartupAllAPs 不等它
 
 报串:
     push rcx
@@ -677,7 +745,8 @@ AP过程:
     push rdx
     mov [rip + 单字], al
     mov byte ptr [rip + 单字 + 1], 0
-    mov rcx, [rbx + 64]
+    mov rcx, [rip + _sys]
+    mov rcx, [rcx + 64]
     lea rdx, [rip + 单字]
     call qword ptr [rcx + 8]
     pop rdx
@@ -768,6 +837,11 @@ BIO_GUID:
 报_坏:   .asciz "\r\n[XBP] SEAL/HASH MISMATCH - refused\r\n"
 报_装败: .asciz "\r\n[XBP] AllocateAddress FAILED pages=0x"
 报_无:   .asciz "\r\n[XBP] no block device\r\n"
+    .align 8
+壁配:    .zero 64
+壁址:    .quad 0
+报_壁:   .asciz "[ ok ] wallpaper 6MB @ 0x2000000\r\n"
+报_退值: .asciz "[ .. ] ExitBootStatus=0x"
 报_跳:   .asciz "[ ok ] ExitBootServices\r\n[ .. ] ignite yu0\r\n"
 
     .align 8
@@ -793,6 +867,8 @@ _MP数:      .quad 0
 _MP缓:      .quad 0
 _核数:      .quad 0
 _已启:      .quad 0
+算派入口:   .quad 0
+编译器入口: .quad 0
 _img:       .quad 0
     .globl _sys
 _sys:       .quad 0
@@ -832,5 +908,91 @@ _sh_b:      .quad 0
     .section .bss
     .align 16
 宽缓:       .space 256
-块缓冲:     .space 1024
+块缓冲:     .space 65536
+诊1:        .byte 0 
 map缓冲:    .space 0x80000
+    .section .text
+    .globl _写块
+_写块:
+    push rbx
+    push r12
+    push r13
+    push r14
+    sub rsp, 0x28           # 0x20窗口 + 8 对齐
+
+    mov r12, rdi            # LBA
+    mov r13, rsi            # 字节数
+    mov r14, rdx            # 源缓冲
+
+    mov rbx, [rip + _bio]
+    test rbx, rbx
+    jz .wb_fail
+    mov rax, [rbx + 8]      # Media
+    mov rcx, [rax]           # MediaId（+0，不是 +8）
+
+    mov rdx, rcx            # MediaId
+    mov r8, r12             # LBA
+    mov r9, r13             # 字节数
+    mov [rsp + 0x20], r14   # 缓冲
+    mov rax, [rip + _bio]
+    call qword ptr [rax + 40]   # WriteBlocks
+
+    jmp .wb_out
+.wb_fail:
+    mov rax, 1
+.wb_out:
+    add rsp, 0x28
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+# 读一块：rdi=LBA, rsi=字节数, rdx=目标缓冲
+    .section .text
+    .globl _读块
+_读块:
+    push rbx
+    push r12
+    push r13
+    push r14
+    sub rsp, 0x28
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    mov rbx, [rip + _bio]
+    test rbx, rbx
+    jz .rb_fail
+    mov rax, [rbx + 8]
+    mov rcx, [rax]
+    mov rdx, rcx
+    mov r8, r12
+    mov r9, r13
+    mov [rsp + 0x20], r14
+    mov rax, [rip + _bio]
+    call qword ptr [rax + 24]
+    jmp .rb_out
+.rb_fail:
+    mov rax, 1
+.rb_out:
+    add rsp, 0x28
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+    .section .rodata
+写盘测试串: .asciz "HUNDUN01"
+报_时间:     .asciz "[ ok ] RTC time read\r\n"
+报_写盘好:  .asciz "[ ok ] DISK write/read OK\r\n"
+报_写盘坏:  .asciz "[FAIL] DISK write/read\r\n"
+
+    .section .bss
+    .align 16
+时缓冲:     .space 32
+AP栈区:     .space 65536    # 8 核 × 8KB
+AP到位数:   .quad 0
+AP放行:     .quad 0
+写盘缓冲:   .space 512
+写盘缓冲2:  .space 512
